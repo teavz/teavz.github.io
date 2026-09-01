@@ -1,0 +1,135 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="CS 180 Project 0 — Becoming Friends with Your Camera">
+    <title>CS 180 Project 0 | Theo Dela Cruz</title>
+    <style>
+      :root {
+        color-scheme: light;
+        --ink: #1e1f22;
+        --muted: #666b73;
+        --line: #dfe1e5;
+        --paper: #fbfbfa;
+        --accent: #b9975b;
+      }
+
+      * { box-sizing: border-box; }
+
+      html { scroll-behavior: smooth; }
+
+      body {
+        margin: 0;
+        color: var(--ink);
+        background: var(--paper);
+        font-family: Arial, Helvetica, sans-serif;
+        line-height: 1.55;
+      }
+
+      main { max-width: 1080px; margin: 0 auto; padding: 64px 24px 88px; }
+
+      header { border-bottom: 1px solid var(--line); padding-bottom: 30px; }
+
+      .eyebrow {
+        margin: 0 0 12px;
+        color: var(--accent);
+        font-size: .78rem;
+        font-weight: 700;
+        letter-spacing: .11em;
+        text-transform: uppercase;
+      }
+
+      h1, h2 { font-family: Georgia, 'Times New Roman', serif; line-height: 1.12; }
+      h1 { margin: 0; font-size: clamp(2.35rem, 6vw, 4.5rem); font-weight: 500; }
+      h2 { margin: 0 0 10px; font-size: clamp(1.65rem, 3vw, 2.25rem); font-weight: 500; }
+      .byline, .intro, figcaption, .placeholder { color: var(--muted); }
+      .byline { margin: 18px 0 0; }
+      .intro { max-width: 650px; margin: 24px 0 0; }
+
+      section { padding-top: 55px; }
+      section > p { max-width: 720px; margin: 0 0 24px; }
+
+      .image-pair {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 18px;
+      }
+
+      figure { margin: 0; }
+      img { display: block; width: 100%; height: 420px; object-fit: cover; border-radius: 3px; }
+      .show-bottom { object-position: center bottom; }
+      .dolly-zoom { width: min(100%, 520px); height: auto; }
+      figcaption { padding-top: 9px; font-size: .93rem; }
+
+      .placeholder {
+        display: grid;
+        min-height: 190px;
+        place-items: center;
+        border: 1px dashed #bfc2c7;
+        border-radius: 3px;
+        background: #f4f4f2;
+        text-align: center;
+        padding: 24px;
+      }
+
+      footer { margin-top: 56px; padding-top: 18px; border-top: 1px solid var(--line); color: var(--muted); font-size: .9rem; }
+
+      @media (max-width: 650px) {
+        main { padding-top: 40px; }
+        .image-pair { grid-template-columns: 1fr; }
+        img { height: auto; max-height: 560px; }
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <header>
+        <p class="eyebrow">CS 180 · Project 0</p>
+        <h1>Becoming Friends with Your Camera</h1>
+        <p class="byline">Theo Dela Cruz</p>
+        <p class="intro">A short study of how camera distance and focal length change the way a scene looks.</p>
+      </header>
+
+      <section>
+        <h2>Part 1: Selfie — wrong way vs. right way</h2>
+        <p>The close-up selfie exaggerates the central features of the face. After stepping back and zooming in to keep the face about the same size, the portrait has a more natural perspective.</p>
+        <div class="image-pair">
+          <figure>
+            <img src="assets/selfie-close.jpg" alt="Close-up selfie with noticeable perspective distortion">
+            <figcaption>Close up</figcaption>
+          </figure>
+          <figure>
+            <img class="show-bottom" src="assets/selfie-zoom.jpg" alt="Portrait taken from farther away and zoomed in">
+            <figcaption>Farther away + zoomed in</figcaption>
+          </figure>
+        </div>
+      </section>
+
+      <section>
+        <h2>Part 2: Architectural perspective compression</h2>
+        <p>For the zoomed-in image, the building appears flatter and more compressed. Moving closer and using a wider view makes the foreground feel larger and exaggerates the building's converging lines.</p>
+        <div class="image-pair">
+          <figure>
+            <img src="assets/building-zoom.jpg" alt="Zoomed-in nighttime photograph of a campus building">
+            <figcaption>From farther away + zoomed in</figcaption>
+          </figure>
+          <figure>
+            <img src="assets/building-wide.jpg" alt="Wide-angle nighttime photograph of the same campus building from closer up">
+            <figcaption>Closer + wide angle</figcaption>
+          </figure>
+        </div>
+      </section>
+
+      <section>
+        <h2>Part 3: Dolly zoom</h2>
+        <figure>
+          <img class="dolly-zoom" src="assets/dollyzoom.webp" alt="Animated dolly zoom of a snack bag on a kitchen counter">
+          <figcaption>Dolly zoom</figcaption>
+        </figure>
+      </section>
+
+      <footer>CS 180 / 280A · Project 0</footer>
+    </main>
+  </body>
+</html>
