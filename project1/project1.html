@@ -1,0 +1,861 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>CS180 Project 1 - Images of the Russian Empire</title>
+
+    <style>
+        body {
+            font-family: Arial, Helvetica, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 40px 24px;
+            line-height: 1.6;
+            color: #222;
+            background-color: #fafafa;
+        }
+
+        header {
+            margin-bottom: 50px;
+        }
+
+        h1 {
+            margin-bottom: 5px;
+        }
+
+        h2 {
+            margin-top: 60px;
+            padding-bottom: 8px;
+            border-bottom: 2px solid #ddd;
+        }
+
+        h3 {
+            margin-top: 30px;
+        }
+
+        .subtitle {
+            color: #666;
+            margin-top: 0;
+        }
+
+        .explanation {
+            background-color: white;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 20px 0 30px 0;
+        }
+
+        .placeholder {
+            color: #777;
+            font-style: italic;
+        }
+
+        .image-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 25px;
+            margin-top: 25px;
+        }
+
+        .image-card {
+            background-color: white;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            padding: 15px;
+        }
+
+        .image-card img {
+            width: 100%;
+            height: auto;
+            display: block;
+            border-radius: 4px;
+        }
+
+        .image-card h3 {
+            margin-top: 12px;
+            margin-bottom: 5px;
+        }
+
+        .offsets {
+            margin-top: 8px;
+            font-family: monospace;
+            line-height: 1.5;
+        }
+
+        footer {
+            margin-top: 80px;
+            padding-top: 20px;
+            border-top: 1px solid #ddd;
+            color: #666;
+        }
+
+    .crop-wrapper {
+        overflow: hidden;
+        border-radius: 4px;
+    }
+
+    .crop-wrapper img {
+        width: 100%;
+        height: auto;
+        display: block;
+    }
+
+    /* Cathedral: heavier crop, especially on the right */
+    .crop-cathedral img {
+        transform: scale(1.12) translate(-1%, 0%);
+    }
+
+    /* Church: slightly heavier crop on right */
+    .crop-church img {
+        transform: scale(1.09) translate(-1%, 0%);
+    }
+
+    /* Emir */
+    .crop-emir img {
+        transform: scale(1.05);
+    }
+
+    /* Harvesters: crop top slightly more */
+    .crop-harvesters img {
+        transform: scale(1.06) translate(0%, 1%);
+    }
+
+    /* Icon */
+    .crop-icon img {
+        transform: scale(1.05);
+    }
+
+    /* Ilemselga */
+    .crop-ilemselga img {
+        transform: scale(1.05);
+    }
+
+    /* Melons */
+    .crop-melons img {
+        transform: scale(1.05) translate(0%, -0.5%);
+    }
+
+    /* Monastery */
+    .crop-monastery img {
+        transform: scale(1.06) translate(-0.5%, -0.5%);
+    }
+
+    /* Religious Painting */
+    .crop-religious img {
+        transform: scale(1.06);
+    }
+
+    /* Self Portrait */
+    .crop-self img {
+        transform: scale(1.05);
+    }
+
+    /* Siren */
+    .crop-siren img {
+        transform: scale(1.06);
+    }
+
+    /* Three Generations */
+    .crop-three-generations img {
+        transform: scale(1.05);
+    }
+
+    /* Tobolsk */
+    .crop-tobolsk img {
+        transform: scale(1.05);
+    }
+
+    /* Wharf */
+    .crop-wharf img {
+        transform: scale(1.07);
+    }
+
+    /* Additional images */
+
+    .crop-train img {
+        transform: scale(1.06);
+    }
+
+    .crop-village-church img {
+        transform: scale(1.06);
+    }
+
+    .crop-tracks img {
+        transform: scale(1.06);
+    }
+</style>
+    </style>
+</head>
+
+<body>
+
+    <!-- ========================================================= -->
+    <!-- HEADER -->
+    <!-- ========================================================= -->
+
+    <header>
+        <h1>CS180 Project 1: Images of the Russian Empire</h1>
+
+        <p class="subtitle">
+            Colorizing the Prokudin-Gorskii Photo Collection
+        </p>
+
+        <p>
+            <strong>Theo Dela Cruz</strong>
+        </p>
+    </header>
+
+
+    <!-- ========================================================= -->
+    <!-- OVERVIEW -->
+    <!-- ========================================================= -->
+
+    <section>
+        <h2>Overview</h2>
+
+        <div class="explanation">
+            <p>
+                The goal of this project is to reconstruct color photographs from the Prokudin-Gorskii collection. Each glass plate collection contains 3 grayscales
+                of the same scene, the three being red, green, and blue. They are captured through three separate filters, so they are a bit misaligned. The idea 
+                is that we form an algorithm to combine the three grayscales into one image, while taking into consideration the misalignment of the filters. 
+            </p>
+
+            <p>
+                To create a color image, I separate the red, green, and blue grayscales. The blue channel is used as a reference for alignment, and the 
+                red and green channels are compared against it to find the best shift alignments for the red and green channels. 
+                The 3 images are then stacked on top of each other to create a cohesive RGB image.
+            </p>
+
+            <p>
+                I first created the naive implementation, in which I check a list of alignments for the entire image at once. This is good for the smaller images 
+                (for example the jpg file format), but can lead to performance issues on bigger images. I then created a multi-scale implementation, in which a larger image
+                is repeatedly downsampled into lower resolutions, and shifts are calculated after each downsample.
+            </p>
+
+        </div>
+    </section>
+
+
+    <!-- ========================================================= -->
+    <!-- PART 1: SINGLE-SCALE ALIGNMENT -->
+    <!-- ========================================================= -->
+
+    <section>
+
+        <h2>Part 1: Single-Scale Alignment</h2>
+
+        <div class="explanation">
+
+            <h3>Approach</h3>
+
+            <p>
+                To split the glass plate into the 3 color images, I took the approach of simply dividing the height into 3 equal parts, and assigning the colors
+                to their respective places in the image. The original glass plate nicely divides the 3 grayscales into 3 equal parts.
+            </p>
+
+            <p>
+                The blue image is used as a reference for the red and green images. The correlation metric I chose to use was normalized cross-correlation (ncc). I used this
+                metric to compare the blue and red images, as well as the blue and green images. I checked across many shifts to see which shift was the most aligned
+                for both of the combinations.
+            </p>
+
+            <p>
+                To check across shifts, I used a double for loop. In both the x and y directions, I checked 15 pixels both ways. To clarify, this means that in the y direction I checked
+                in the range of 15 pixels up and 15 pixels down (and 0, so 31 pixels total), and in the x direction 15 pixels left and 15 pixels right (and 0, so 31 pixels total). Each time, I would compute the ncc between
+                the 2 images (either blue and green or blue and red), and keep track of which shift pairing (x and y shifts) gives the best correlation score. 
+            </p>
+
+            <p>
+                To test each shift, I use <code>np.roll</code> tof align the image (red or green) along the corresponding x and y axes. Then, ncc is run between this shifted image and 
+                the blue reference image, and the score is tracked. <code>np.roll</code> does make an image wrap around, so some preprocessing has to be done in order for the correlation score to be more accurate
+                (explained in next section). 
+            </p>
+
+
+            <h3>Normalized Cross-Correlation</h3>
+
+            <p>
+                Normalized Cross-Correlation is performed by obtaining a demeaned image for the wanted image (red or green) and the reference image (blue). In an equation,
+                this is <code>image - np.mean(image)</code>. This gives you the variation between pixels rather than just the magnitudes of each pixel, which helps encode more consistent
+                information across the three color images. You also have to obtain the normalized version of each image (obtain by dividing by the magnitude -> 
+                <code>np.linalg.norm(image)</code>) so that the pixel values are <b> relative </b> to each other. 
+            </p>
+
+            <p>
+                We choose this method because larger NCC values generally indicate better alignment. A larger NCC value means that corresponding pixels in the same
+                images similarly deviate from the mean of their respective images. Brighter red pixels will generally correspond with brighter blue and brighter green pixels,
+                which the main idea behind utilizing the NCC (the same is true for darker pixels). When the 2 images are aligned, the brightness of most of the pixels 
+                will be aligned, which will grant the highest NCC score. 
+            </p>
+
+            <p>
+                Before the score is calculated, the edges of the image are thrown out of the calculation. This is because <code>np.roll</code> wraps images around, so a pixel previously on the 
+                right side of the image could be on the left after a roll is performed. Therefore, we throw out the outer 10% on each side (both vertically and horizontally). This
+                ensures that our calculation is only done on the pixels we actually want aligned, so there is a bigger focus on the actual image content.
+            </p>
+
+
+            <h3>Displacement Convention</h3>
+
+            <p >
+                The displacement beneath each image is in the form (x, y), for the green and red plates to align with the blue plate. Where x and y are the horizontal and 
+                vertical shifts that granted the best NCC score.
+            </p>
+
+        </div>
+
+
+        <h3>Single-Scale Results</h3>
+
+        <div class="image-grid">
+
+            <!-- Cathedral -->
+
+            <div class="image-card">
+
+                <img
+                    src="output/single_cathedral.jpg"
+                    alt="Single-scale Cathedral"
+                >
+
+                <h3>Cathedral</h3>
+
+                <div class="offsets">
+                    Green: (2, 5)<br>
+                    Red: (3, 12)
+                </div>
+
+            </div>
+
+
+            <!-- Monastery -->
+
+            <div class="image-card">
+
+                <img
+                    src="output/single_monastery.jpg"
+                    alt="Single-scale Monastery"
+                >
+
+                <h3>Monastery</h3>
+
+                <div class="offsets">
+                    Green: (2, -3)<br>
+                    Red: (2, 3)
+                </div>
+
+            </div>
+
+
+            <!-- Tobolsk -->
+
+            <div class="image-card">
+
+                <img
+                    src="output/single_tobolsk.jpg"
+                    alt="Single-scale Tobolsk"
+                >
+
+                <h3>Tobolsk</h3>
+
+                <div class="offsets">
+                    Green: (3, 3)<br>
+                    Red: (3, 6)
+                </div>
+
+            </div>
+
+        </div>
+
+    </section>
+
+
+    <!-- ========================================================= -->
+    <!-- PART 2: MULTI-SCALE IMAGE PYRAMID -->
+    <!-- ========================================================= -->
+
+    <section>
+
+        <h2>Part 2: Multi-Scale Image Pyramid</h2>
+
+        <div class="explanation">
+
+            <h3>Motivation</h3>
+
+            <p>
+                On a larger image, single scale becomes inefficient since the displacement between the color images can be extremely large. This means you would have
+                to search across a wider range of shifts, as well as calculate the NCC on a much larger image. This requires a lot of computation, and would be very 
+                slow and inefficient. 
+            </p>
+
+            <p>
+                Utilizing an image pyramid makes this search much more efficient by finding the displacement on a smaller size of the image. This displacement can then 
+                be scaled back up to the original size image to obtain quite a good estimate for the total shift required. This means that you spend an initial computation 
+                to scale the image down, but you search a smaller window of shifts, which is computationally more efficient in the long run.
+            </p>
+
+
+            <h3>Building the Image Pyramid</h3>
+
+            <p >
+                To build the image pyramid, I recursively downsample the image (red or green) and the reference image (blue). The images continue to be reduced
+                in size until they are small enough for the normal, single-scale search to be effective.
+            </p>
+
+            <p >
+                I downsampled each time by a factor of 0.8. Each time, I resized an image by 80% using <code> skimage.transform.rescale</code> with anti-aliasing
+                enabled. This decreases the resolution at a fast enough rate to be computationally worth it, but slow enough so that the image structure is more maintained
+                for the NCC score to find the correct alignment.
+            </p>
+
+
+            <h3>Coarse-to-Fine Alignment</h3>
+
+            <p >
+                Alignment begins at the smallest image in the pyramid. At this resolution (the coarsest), a naive search is performed to find the shift that
+                produces the highest NCC score.
+
+            </p>
+
+            <p >
+                After finding this displacement, I divide by a factor of 0.8 (and round) in order to obtain the pixel displacement at the next resolution. 
+            </p>
+
+            <p >
+                This displacement is then applied to the image at the next resolution using <code>np.roll</code>. Since the image is approximately aligned, the
+                algorithm only needs to search a smaller window of shifts to account for the more accurate information that a higher resolution gives. The process
+                is essentially making a guess, updating the information at the next stage, and refining the guess.
+            </p>
+
+            <p>
+                This process is repeated recursively as the algorithm gets through the pyramid (coarse to fine). At the end, the algorithm reaches the original image
+                resolution and returns the full-scale alignment.
+            </p>
+
+        </div>
+
+
+        <h3>Multi-Scale Results</h3>
+
+        <div class="image-grid">
+
+            <!-- Cathedral -->
+            <div class="image-card">
+
+                <div class="crop-wrapper crop-cathedral">
+                    <img
+                        src="output/multi_cathedral.jpg"
+                        alt="Multi-scale Cathedral"
+                    >
+                </div>
+
+                <h3>Cathedral</h3>
+
+                <div class="offsets">
+                    Green: (2, 5)<br>
+                    Red: (3, 12)
+                </div>
+
+            </div>
+
+
+            <!-- Church -->
+            <div class="image-card">
+
+                <div class="crop-wrapper crop-church">
+                    <img
+                        src="output/multi_church.jpg"
+                        alt="Multi-scale Church"
+                    >
+                </div>
+
+                <h3>Church</h3>
+
+                <div class="offsets">
+                    Green: (4, 25)<br>
+                    Red: (-4, 58)
+                </div>
+
+            </div>
+
+
+            <!-- Emir -->
+            <div class="image-card">
+
+                <div class="crop-wrapper crop-emir">
+                    <img
+                        src="output/multi_emir.jpg"
+                        alt="Multi-scale Emir"
+                    >
+                </div>
+
+                <h3>Emir</h3>
+
+                <div class="offsets">
+                    Green: (24, 49)<br>
+                    Red: (56, 104)
+                </div>
+
+            </div>
+
+
+            <!-- Harvesters -->
+            <div class="image-card">
+
+                <div class="crop-wrapper crop-harvesters">
+                    <img
+                        src="output/multi_harvesters.jpg"
+                        alt="Multi-scale Harvesters"
+                    >
+                </div>
+
+                <h3>Harvesters</h3>
+
+                <div class="offsets">
+                    Green: (17, 60)<br>
+                    Red: (13, 124)
+                </div>
+
+            </div>
+
+
+            <!-- Icon -->
+            <div class="image-card">
+
+                <div class="crop-wrapper crop-icon">
+                    <img
+                        src="output/multi_icon.jpg"
+                        alt="Multi-scale Icon"
+                    >
+                </div>
+
+                <h3>Icon</h3>
+
+                <div class="offsets">
+                    Green: (17, 41)<br>
+                    Red: (23, 89)
+                </div>
+
+            </div>
+
+
+            <!-- Ilemselga -->
+            <div class="image-card">
+
+                <div class="crop-wrapper crop-ilemselga">
+                    <img
+                        src="output/multi_ilemselga.jpg"
+                        alt="Multi-scale Ilemselga"
+                    >
+                </div>
+
+                <h3>Ilemselga</h3>
+
+                <div class="offsets">
+                    Green: (7, 40)<br>
+                    Red: (11, 130)
+                </div>
+
+            </div>
+
+
+            <!-- Melons -->
+            <div class="image-card">
+
+                <div class="crop-wrapper crop-melons">
+                    <img
+                        src="output/multi_melons.jpg"
+                        alt="Multi-scale Melons"
+                    >
+                </div>
+
+                <h3>Melons</h3>
+
+                <div class="offsets">
+                    Green: (11, 82)<br>
+                    Red: (13, 178)
+                </div>
+
+            </div>
+
+
+            <!-- Monastery -->
+            <div class="image-card">
+
+                <div class="crop-wrapper crop-monastery">
+                    <img
+                        src="output/multi_monastery.jpg"
+                        alt="Multi-scale Monastery"
+                    >
+                </div>
+
+                <h3>Monastery</h3>
+
+                <div class="offsets">
+                    Green: (2, -3)<br>
+                    Red: (2, 3)
+                </div>
+
+            </div>
+
+
+            <!-- Religious Painting -->
+            <div class="image-card">
+
+                <div class="crop-wrapper crop-religious">
+                    <img
+                        src="output/multi_religious_painting.jpg"
+                        alt="Multi-scale Religious Painting"
+                    >
+                </div>
+
+                <h3>Religious Painting</h3>
+
+                <div class="offsets">
+                    Green: (3, 28)<br>
+                    Red: (7, 68)
+                </div>
+
+            </div>
+
+
+            <!-- Self Portrait -->
+            <div class="image-card">
+
+                <div class="crop-wrapper crop-self">
+                    <img
+                        src="output/multi_self_portrait.jpg"
+                        alt="Multi-scale Self Portrait"
+                    >
+                </div>
+
+                <h3>Self Portrait</h3>
+
+                <div class="offsets">
+                    Green: (29, 79)<br>
+                    Red: (37, 176)
+                </div>
+
+            </div>
+
+
+            <!-- Siren -->
+            <div class="image-card">
+
+                <div class="crop-wrapper crop-siren">
+                    <img
+                        src="output/multi_siren.jpg"
+                        alt="Multi-scale Siren"
+                    >
+                </div>
+
+                <h3>Siren</h3>
+
+                <div class="offsets">
+                    Green: (-6, 45)<br>
+                    Red: (-25, 96)
+                </div>
+
+            </div>
+
+
+            <!-- Three Generations -->
+            <div class="image-card">
+
+                <div class="crop-wrapper crop-three-generations">
+                    <img
+                        src="output/multi_three_generations.jpg"
+                        alt="Multi-scale Three Generations"
+                    >
+                </div>
+
+                <h3>Three Generations</h3>
+
+                <div class="offsets">
+                    Green: (14, 53)<br>
+                    Red: (11, 112)
+                </div>
+
+            </div>
+
+
+            <!-- Tobolsk -->
+            <div class="image-card">
+
+                <div class="crop-wrapper crop-tobolsk">
+                    <img
+                        src="output/multi_tobolsk.jpg"
+                        alt="Multi-scale Tobolsk"
+                    >
+                </div>
+
+                <h3>Tobolsk</h3>
+
+                <div class="offsets">
+                    Green: (3, 3)<br>
+                    Red: (3, 6)
+                </div>
+
+            </div>
+
+
+            <!-- Wharf -->
+            <div class="image-card">
+
+                <div class="crop-wrapper crop-wharf">
+                    <img
+                        src="output/multi_wharf.jpg"
+                        alt="Multi-scale Wharf"
+                    >
+                </div>
+
+                <h3>Wharf</h3>
+
+                <div class="offsets">
+                    Green: (-7, 15)<br>
+                    Red: (-16, 83)
+                </div>
+
+            </div>
+
+        </div>
+
+    </section>
+
+
+    <!-- ========================================================= -->
+    <!-- ADDITIONAL IMAGES -->
+    <!-- ========================================================= -->
+
+    <section>
+
+        <h2>Additional Images from the Prokudin-Gorskii Collection</h2>
+
+        <div class="explanation">
+
+            <p >
+                I selected three additional images from the Prokudin-Gorskii collection: images of a train, a church, and train tracks.
+                I applied the exact same multi-scale coarse-to-fine alignment algorithm used on the previous images. The parameters used are also the same as 
+                the course-selected dataset. I did not manually adjust the algorithm for any of these 3 images. I believe that the algorithm performed quite well 
+                on these images! They look very similar to the images shown on the actual Prokudin-Gorskii collection. The main structures in each scene are aligned,
+                and the calculated displacements span a wide range, so the algorithm works on a variety of offsets.
+            </p>
+
+        </div>
+
+
+        <div class="image-grid">
+
+
+            <!-- Train -->
+
+            <div class="image-card">
+
+                <img
+                    src="output/multi_train.jpg"
+                    alt="Multi-scale Train"
+                >
+
+                <h3>Train</h3>
+
+                <div class="offsets">
+                    Green: (6, 43)<br>
+                    Red: (32, 87)
+                </div>
+
+            </div>
+
+
+            <!-- Village Church -->
+
+            <div class="image-card">
+
+                <img
+                    src="output/multi_village_church.jpg"
+                    alt="Multi-scale Village Church"
+                >
+
+                <h3>Village Church</h3>
+
+                <div class="offsets">
+                    Green: (-2, 39)<br>
+                    Red: (-4, 129)
+                </div>
+
+            </div>
+
+
+            <!-- Tracks -->
+
+            <div class="image-card">
+
+                <img
+                    src="output/multi_tracks.jpg"
+                    alt="Multi-scale Tracks"
+                >
+
+                <h3>Tracks</h3>
+
+                <div class="offsets">
+                    Green: (13, 45)<br>
+                    Red: (16, 97)
+                </div>
+
+            </div>
+
+        </div>
+
+    </section>
+
+
+    <!-- ========================================================= -->
+    <!-- FAILURE ANALYSIS -->
+    <!-- ========================================================= -->
+
+    <section>
+
+        <h2>Failure Analysis</h2>
+
+        <div class="explanation">
+
+            <p >
+                One image that had some issues was Emir.
+            </p>
+
+            <p >
+                Originally, I had a downsampling factor of 0.5, and this resulted in the red part of Emir being very separated from the green and blue channels. Switching to
+                a 0.8 downsampling rate improved the results on all images, especially Emir, at the cost of performance. 
+                The issue with Emir is that the brightness is not necessarily uniform across the three colors. Our algorithm relies on a NCC metric, which favors
+                similar brightness intensity patterns across the three color scales.
+            </p>
+
+            <p >
+                This produces a result that is generally good, but may be misaligned in some places. In fact, the exact issue I'm running into is the example listed
+                on the website. 
+            </p>
+
+            <p>
+                An improvement to make is to also consider a method that does not rely on brightness patterns. This could be something that creates a fingerprint out of
+                an edge detector. Any method that does not consider the raw pixel values, but instead something that considers the image as a whole would be 
+                more effective at aligning Emir.
+            </p>
+        </div>
+
+    </section>
+
+
+    <!-- ========================================================= -->
+    <!-- FOOTER -->
+    <!-- ========================================================= -->
+
+    <footer>
+        CS180: Intro to Computer Vision and Computational Photography
+    </footer>
+
+</body>
+
+</html>

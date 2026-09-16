@@ -84,6 +84,9 @@ def multi_align(im, ref, shift=15):
 def main():
     # name of the input file
     imname = 'CS180_fa2026_proj1_data/three_generations.tif'
+    
+    # name of the output file
+    fname = 'output/multi_three_generations.jpg'
     # read in the image
     im = skio.imread(imname)
 
@@ -110,7 +113,6 @@ def main():
 
     # save the image
     im_out_uint8 = sk.img_as_ubyte(im_out)
-    fname = 'output/multi_three_generations.jpg'
     skio.imsave(fname, im_out_uint8)
 
     # display the image
