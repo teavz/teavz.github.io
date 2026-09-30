@@ -1,0 +1,700 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="CS 180 Project 2">
+    <title>Project 2 | CS 180</title>
+    <style>
+      :root {
+        --ink: #202124;
+        --muted: #666b73;
+        --line: #dfe1e5;
+        --paper: #fbfbfa;
+        --accent: #b9975b;
+      }
+
+      * { box-sizing: border-box; }
+      body { margin: 0; background: var(--paper); color: var(--ink); font: 16px/1.6 Arial, Helvetica, sans-serif; }
+      main { max-width: 1100px; margin: auto; padding: 48px 24px 72px; }
+      .back { color: var(--muted); font-size: .9rem; text-decoration: none; }
+      .eyebrow { margin: 0 0 10px; color: var(--accent); font-size: .78rem; font-weight: bold; letter-spacing: .1em; text-transform: uppercase; }
+      header { margin: 28px 0 0; padding-bottom: 28px; border-bottom: 1px solid var(--line); }
+      h1, h2, h3 { font-family: Georgia, "Times New Roman", serif; font-weight: 500; line-height: 1.15; }
+      h1 { margin: 0; font-size: clamp(2.5rem, 7vw, 4.5rem); }
+      h2 { margin: 0 0 10px; font-size: 2rem; }
+      h3 { margin: 0 0 8px; font-size: 1.3rem; }
+      .intro, p { max-width: 850px; }
+      .intro, .note { color: var(--muted); }
+      section { padding: 34px 0; border-bottom: 1px solid var(--line); }
+      .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin-top: 18px; }
+      .stack-columns { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 16px; margin-top: 18px; }
+      .mask-stack-columns { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 16px; margin-top: 18px; max-width: 700px; }
+      .stack-column { min-width: 0; }
+      .stack-column h3 { min-height: 3em; }
+      .stack-column figure { margin-top: 12px; }
+      figure { margin: 0; background: #fff; border: 1px solid var(--line); }
+      img { display: block; width: 100%; aspect-ratio: 1; object-fit: contain; background: #f4f4f2; }
+      .grayscale { filter: grayscale(1); }
+      figcaption { padding: 9px 10px; color: var(--muted); font-size: .86rem; }
+      pre { max-width: 850px; overflow-x: auto; padding: 16px; background: #202124; color: #f6f4ef; font-size: .85rem; line-height: 1.45; }
+      .figure-table { width: 100%; border-collapse: separate; border-spacing: 12px; margin-top: 18px; }
+      .figure-table th { font-family: Georgia, serif; font-size: 1.1rem; font-weight: 500; }
+      .figure-table td { width: 33.3%; vertical-align: top; text-align: center; }
+      .figure-table img { border: 1px solid var(--line); }
+      .panel-label { margin: 4px 0 0; font-family: Georgia, serif; }
+      footer { padding-top: 32px; color: var(--muted); font-size: .9rem; }
+
+      @media (max-width: 600px) {
+        .stack-columns { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+        .figure-table { border-spacing: 4px; }
+        .figure-table th { font-size: .9rem; }
+        .panel-label { font-size: .85rem; }
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <a class="back" href="../index.html">← Back to all projects</a>
+      <header>
+        <p class="eyebrow">CS 180 · Project 2</p>
+        <h1>Fun with Filters &amp; Frequencies</h1>
+        <p class="intro">Theo Dela Cruz · Fall 2026</p>
+      </header>
+      <section>
+        <h2>Part 1.1 · Convolutions from Scratch</h2>
+        <p>I implemented zero-padded 2D convolution with a flipped kernel. 
+          The manual implementation follows the same boundary convention but is slower because it loops over every output pixel.
+          convolve2d also has different boundary handling, as they have a symmetric and wrapround padding option. I only implemented
+          the zero padding option. Convolve2d uses caching and other optimization techniques in order to make the repeated operations 
+          run much quicker, but the overall logic is exactly the same and in fact produces the same result.</p>
+        <h3>My manual convolution</h3>
+        <pre><code>def manual_convolve(image, kernel, padding='same'):
+    h, w = image.shape
+    kh, kw = kernel.shape
+    pad_h, pad_w = kh // 2, kw // 2
+    if padding == 'full':
+        padded = np.zeros((h + 2 * kh - 1, w + 2 * kw - 1))
+        result = np.empty((h + kh - 1, w + kw - 1))
+        padded[kh-1:kh + h-1, kw-1:kw + w-1] = image
+    else:
+        padded = np.zeros((h + 2 * pad_h, w + 2 * pad_w))
+        result = np.empty((h, w))
+        padded[pad_h:pad_h + h, pad_w:pad_w + w] = image
+    kernel = np.flip(np.flip(kernel, axis=0), axis=1)
+    if padding == 'full':
+        for y in range(h + 2 * pad_h):
+            for x in range(w + 2 * pad_w):
+                result[y, x] = np.sum(padded[y:y+kh, x:x+kw] * kernel)
+    if padding == 'same':
+        for y in range(h):
+            for x in range(w):
+                result[y, x] = np.sum(padded[y:y+kh, x:x+kw] * kernel)
+    return result</code></pre>
+        <h3>Four-loop version (replaces np.sum)</h3>
+        <pre><code>for y in range(output_h):
+    for x in range(output_w):
+        total = 0
+        for kernel_y in range(kh):
+            for kernel_x in range(kw):
+                total += padded[y + kernel_y, x + kernel_x] * kernel[kernel_y, kernel_x]
+        result[y, x] = total</code></pre>
+          <div class="grid">
+            <figure>
+              <img src="assets/me.png" alt="Original grayscale portrait">
+              <figcaption>Original portrait</figcaption>
+            </figure>
+            <figure>
+              <img src="box_and_me.jpg" alt="Box-filtered portrait">
+              <figcaption>9 × 9 box filter</figcaption>
+            </figure>
+            <figure>
+              <img src="dx_and_me.jpg" alt="Portrait filtered by Dx">
+              <figcaption>Dx response</figcaption>
+            </figure>
+            <figure>
+              <img src="dy_and_me.jpg" alt="Portrait filtered by Dy">
+              <figcaption>Dy response</figcaption>
+            </figure>
+          </div>
+        </section>
+        <section>
+          <h2>Part 1.2 · Finite Difference Operator</h2>
+          <p>
+            Dx and Dy measure intensity changes along the horizontal and vertical directions. Their gradient magnitude gives the edge strength, and thresholding produces the final edge map. 
+            I used <code>gradient_magnitude &gt; 0.21</code>, which suppresses weak texture responses while retaining the main object and tripod boundaries.
+            Anything lower, and the full shape of the cameraman + tripod would not be fully displayed. This is the minimum threshold that fully represents the entire
+            structure, but there is still a lot of noise, which are the masses of white specks in the background.
+          </p>
+          <div class="grid">
+            <figure>
+              <img src="assets/cameraman.png" alt="Cameraman input">
+              <figcaption>Input</figcaption>
+            </figure>
+            <figure>
+              <img src="cameraman_dx.jpg" alt="Cameraman Dx">
+              <figcaption>Dx</figcaption>
+            </figure>
+            <figure>
+              <img src="cameraman_dy.jpg" alt="Cameraman Dy">
+              <figcaption>Dy</figcaption>
+            </figure>
+            <figure>
+              <img src="cameraman_fdo.jpg" alt="Gradient magnitude">
+              <figcaption>Gradient magnitude</figcaption>
+            </figure>
+            <figure>
+              <img src="cameraman_fdo_binarized.jpg" alt="Finite-difference edges">
+              <figcaption>Binarized edge map</figcaption>
+            </figure>
+          </div>
+        </section>
+        <section>
+          <h2>Part 1.3 · Derivative of Gaussian</h2>
+          <p>Gaussian smoothing removes high-frequency noise before differentiation. 
+            I used a 9 × 9 Gaussian with σ = 1, then thresholded the blurred gradient at 0.2 and the one-convolution DoG result at 0.19. 
+            The derivative-of-Gaussian filters produce a cleaner edge map compared to the fdo, while preserving the major structure of the Cameraman image.
+            Comparing the two edge maps, the DoG method reproduces the same major edges as blurring first and differentiating afterward. 
+            They are almost identical, with small differences from things like boundary handling.
+          </p>
+          <div class="grid">
+            <figure>
+              <img src="cameraman_blurred.jpg" alt="Gaussian-smoothed Cameraman image">
+              <figcaption>Gaussian-smoothed Cameraman</figcaption>
+            </figure>
+            <figure>
+              <img src="cameraman_blurred_gradient.jpg" alt="Gradient after Gaussian smoothing">
+              <figcaption>Blurred gradient magnitude</figcaption>
+            </figure>
+            <figure>
+              <img src="cameraman_blurred_edges.jpg" alt="Blurred edge map">
+              <figcaption>Blurred edge map</figcaption>
+            </figure>
+            <figure>
+              <img src="dog_x.jpg" alt="Derivative of Gaussian x filter">
+              <figcaption>DoGx filter</figcaption>
+            </figure>
+            <figure>
+              <img src="dog_y.jpg" alt="Derivative of Gaussian y filter">
+              <figcaption>DoGy filter</figcaption>
+            </figure>
+            <figure>
+              <img src="cameraman_dog_gradient.jpg" alt="Derivative of Gaussian gradient">
+              <figcaption>DoG gradient magnitude</figcaption>
+            </figure>
+            <figure>
+              <img src="cameraman_dog_edges.jpg" alt="Derivative of Gaussian edges">
+              <figcaption>DoG edge map</figcaption>
+            </figure>
+          </div>
+        </section>
+        <section>
+          <h2>Part 2.1 · Image Sharpening</h2>
+          <p>Unsharp masking adds a scaled high-frequency residual back to an image, strengthening its fine detail. 
+            My implementation uses a 13 × 13 Gaussian with σ = 1, subtracts the blurred image to obtain the high-frequency residual, 
+            then adds <code>alpha * high</code> to the original. The edges are improved to be sharpened, but details like people's faces 
+            are not able to be restored. Only high frequencies present in the original image are able to be enhanced (like the 
+            main edges of the taj mahal).
+          </p>
+            <div class="grid">
+              <figure>
+                <img src="assets/taj.jpg" alt="Original Taj Mahal">
+                <figcaption>Original Taj Mahal</figcaption>
+              </figure>
+              <figure>
+                <img src="taj_blurred.jpg" alt="Blurred Taj Mahal">
+                <figcaption>Gaussian-blurred Taj Mahal</figcaption>
+              </figure>
+              <figure>
+                <img src="taj_high_frequency.jpg" alt="Taj Mahal high-frequency residual">
+                <figcaption>High-frequency residual</figcaption>
+              </figure>
+              <figure>
+                <img src="sharpened_taj.jpg" alt="Sharpened Taj Mahal">
+                <figcaption>Unsharp-masked Taj Mahal</figcaption>
+              </figure>
+              <figure>
+                <img src="taj_sharpened_alpha_0.5.jpg" alt="Taj Mahal sharpened with alpha zero point five">
+                <figcaption>Sharpening strength α = 0.5</figcaption>
+              </figure>
+              <figure>
+                <img src="taj_sharpened_alpha_1.0.jpg" alt="Taj Mahal sharpened with alpha one">
+                <figcaption>Sharpening strength α = 1.0</figcaption>
+              </figure>
+              <figure>
+                <img src="taj_sharpened_alpha_2.0.jpg" alt="Taj Mahal sharpened with alpha two">
+                <figcaption>Sharpening strength α = 2.0</figcaption>
+              </figure>
+            </div>
+            <h3>Soft-focus nature: sharpening comparison</h3>
+            <p>I repeated the same unsharp-mask experiment on this already soft-focus image. 
+              The high-frequency residual shows which edges remain. This image is a little bit 
+              too blurred, so not many edges are able to be sharpened as a result. A potential work around for this to 
+              use a more forgiving high pass filter, so edges like the trees will also pass, allowing those features
+              to be sharpened. However, this potentially introduces an increase in noise, so its a tradeoff to be made.
+            </p>
+            <div class="grid">
+              <figure>
+                <img src="assets/blurry_nature.jpg" alt="Original soft-focus nature photo">
+                <figcaption>Original soft-focus image</figcaption>
+              </figure>
+              <figure>
+                <img src="blurry_nature_blurred.jpg" alt="Gaussian-blurred nature photo">
+                <figcaption>Gaussian low-pass · 13 × 13, σ = 1</figcaption>
+              </figure>
+              <figure>
+                <img src="blurry_nature_high_frequency.jpg" alt="High-frequency residual of the nature photo">
+                <figcaption>High-frequency residual</figcaption>
+              </figure>
+              <figure>
+                <img src="blurry_nature_sharpened_alpha_0.5.jpg" alt="Nature photo sharpened with alpha zero point five">
+                <figcaption>Sharpening strength α = 0.5</figcaption>
+              </figure>
+              <figure>
+                <img src="blurry_nature_sharpened_alpha_1.0.jpg" alt="Nature photo sharpened with alpha one">
+                <figcaption>Sharpening strength α = 1.0</figcaption>
+              </figure>
+            <figure>
+              <img src="blurry_nature_sharpened_alpha_2.0.jpg" alt="Nature photo sharpened with alpha two">
+              <figcaption>Sharpening strength α = 2.0</figcaption>
+            </figure>
+          </div>
+            <h3>Sharp → blur → resharpen</h3>
+            <p>This comparison uses a 25 × 25 Gaussian blur (σ = 3), between the earlier subtle blur and the stronger version, 
+              followed by an unsharp-mask recovery pass (α = 4). This shows that the unsharp mask is unable to restore
+              all high frequencies of the image. Features such as the thick black lines in the bottom left are maintained through the 
+              filtering, so when they are enhanced, they are almost restored to normal. However, some of the smaller lines throughout 
+              the image, especially in the top area, blend together during the gaussian blurring. This results in those features not
+              being recovered when redoing the unsharp mask.</p>
+            <div class="grid">
+              <figure>
+                <img src="sharp_image_original.jpg" alt="Original sharp image">
+                <figcaption>Original sharp image</figcaption>
+              </figure>
+              <figure>
+                <img src="sharp_image_blurred.jpg" alt="Sharp image with a strong Gaussian blur">
+                <figcaption>Gaussian blur · 25 × 25, σ = 3</figcaption>
+              </figure>
+              <figure>
+                <img src="sharp_image_resharpened.jpg" alt="Re-sharpened image">
+                <figcaption>Resharpened · α = 4</figcaption>
+              </figure>
+            </div>
+          </section>
+          <section>
+            <h2>Part 2.2 · Hybrid Images</h2>
+            <p>Hybrid images combine the high-frequency content of one aligned image with the low-frequency content of another. 
+              Frequency analysis is shown only for Human + Skull. For this pair, I use 59 × 59 Gaussian kernels with σ<sub>high</sub> = 2 and σ<sub>low</sub> = 3, then average the high- and low-pass images.
+              These results are weaker than the example shown on the website. I think this is due to using different parameters for the whole filtering process.
+              You have to be closer to the image to see the high frequencies inputs, but they are still present.</p>
+  
+              <h3>Human + Skull: inputs, filtering, and frequency analysis</h3>
+              <div class="grid">
+                <figure>
+                  <img src="assets/skull.jpg" alt="Original skull input">
+                  <figcaption>Original skull</figcaption>
+                </figure>
+                <figure>
+                  <img src="assets/human.jpg" alt="Original human input">
+                  <figcaption>Original human</figcaption>
+                </figure>
+                <figure>
+                  <img src="human_skull_high_input.png" alt="Skull high-frequency input">
+                  <figcaption>Aligned skull: high-frequency input</figcaption>
+                </figure>
+                <figure>
+                  <img src="human_skull_low_input.png" alt="Human low-frequency input">
+                  <figcaption>Aligned human: low-frequency input</figcaption>
+                </figure>
+                <figure>
+                  <img src="human_skull_high_pass.png" alt="High-pass skull">
+                  <figcaption>High-pass skull</figcaption>
+                </figure>
+                <figure>
+                  <img src="human_skull_low_pass.png" alt="Low-pass human">
+                  <figcaption>Low-pass human</figcaption>
+                </figure>
+                <figure>
+                  <img src="human_skull.jpg" alt="Human skull hybrid">
+                  <figcaption>Final Human + Skull hybrid</figcaption>
+                </figure>
+              </div>
+              <div class="grid">
+                <figure>
+                  <img src="human_skull_fft_high_input.png" alt="FFT of skull input">
+                  <figcaption>FFT: skull input</figcaption>
+                </figure>
+                <figure>
+                  <img src="human_skull_fft_low_input.png" alt="FFT of human input">
+                  <figcaption>FFT: human input</figcaption>
+                </figure>
+                <figure>
+                  <img src="human_skull_fft_high_pass.png" alt="FFT of high-pass skull">
+                  <figcaption>FFT: high-pass skull</figcaption>
+                </figure>
+                <figure>
+                  <img src="human_skull_fft_low_pass.png" alt="FFT of low-pass human">
+                  <figcaption>FFT: low-pass human</figcaption>
+                </figure>
+                <figure>
+                  <img src="human_skull_fft_hybrid.png" alt="FFT of hybrid">
+                  <figcaption>FFT: hybrid</figcaption>
+                </figure>
+              </div>
+              <h3>Derek + Nutmeg</h3>
+              <div class="grid">
+                <figure>
+                  <img src="assets/DerekPicture.jpg" alt="Original Derek input">
+                  <figcaption>Original Derek</figcaption>
+                </figure>
+                <figure>
+                  <img src="assets/nutmeg.jpg" alt="Original Nutmeg input">
+                  <figcaption>Original Nutmeg</figcaption>
+                </figure>
+                <figure>
+                  <img src="derek_and_nutmeg.jpg" alt="Derek and Nutmeg hybrid image">
+                  <figcaption>Final Derek + Nutmeg hybrid</figcaption>
+                </figure>
+              </div>
+              <h3>Orange + Basketball</h3>
+              <div class="grid">
+                <figure>
+                  <img class="grayscale" src="assets/orange.jpg" alt="Original orange in grayscale">
+                  <figcaption>Original orange · grayscale</figcaption>
+                </figure>
+                <figure>
+                  <img class="grayscale" src="assets/basketball.jpg" alt="Original basketball in grayscale">
+                  <figcaption>Original basketball · grayscale</figcaption>
+                </figure>
+                <figure>
+                  <img src="orange_basketball.jpg" alt="Orange basketball hybrid">
+                  <figcaption>Final grayscale Orange + Basketball hybrid</figcaption>
+                </figure>
+              </div>
+            </section>
+      <section>
+        <h2>Part 2.3 · Gaussian and Laplacian Stacks</h2>
+        <p>I generated eight levels for each stack with a 41 × 41 Gaussian (σ = 6), without downsampling. 
+          Each column shows one stack from level 0 at the top through level 7 at the bottom.</p>
+        <div class="stack-columns">
+        <div class="stack-column">
+          <h3>Apple Gaussian stack</h3>
+          <figure>
+            <img src="assets/oraple/gaussian/apple_gaussian_0.png" alt="Apple Gaussian stack level 0">
+            <figcaption>Level 0</figcaption>
+          </figure>
+          <figure>
+            <img src="assets/oraple/gaussian/apple_gaussian_1.png" alt="Apple Gaussian stack level 1">
+            <figcaption>Level 1</figcaption>
+          </figure>
+          <figure>
+            <img src="assets/oraple/gaussian/apple_gaussian_2.png" alt="Apple Gaussian stack level 2">
+            <figcaption>Level 2</figcaption>
+          </figure>
+          <figure>
+            <img src="assets/oraple/gaussian/apple_gaussian_3.png" alt="Apple Gaussian stack level 3">
+            <figcaption>Level 3</figcaption>
+          </figure>
+          <figure>
+            <img src="assets/oraple/gaussian/apple_gaussian_4.png" alt="Apple Gaussian stack level 4">
+            <figcaption>Level 4</figcaption>
+          </figure>
+          <figure>
+            <img src="assets/oraple/gaussian/apple_gaussian_5.png" alt="Apple Gaussian stack level 5">
+            <figcaption>Level 5</figcaption>
+          </figure>
+          <figure>
+            <img src="assets/oraple/gaussian/apple_gaussian_6.png" alt="Apple Gaussian stack level 6">
+            <figcaption>Level 6</figcaption>
+          </figure>
+          <figure>
+            <img src="assets/oraple/gaussian/apple_gaussian_7.png" alt="Apple Gaussian stack level 7">
+            <figcaption>Level 7</figcaption>
+          </figure>
+        </div>
+        <div class="stack-column">
+          <h3>Orange Gaussian stack</h3>
+          <figure>
+            <img src="assets/oraple/gaussian/orange_gaussian_0.png" alt="Orange Gaussian stack level 0">
+            <figcaption>Level 0</figcaption>
+          </figure>
+          <figure>
+            <img src="assets/oraple/gaussian/orange_gaussian_1.png" alt="Orange Gaussian stack level 1">
+            <figcaption>Level 1</figcaption>
+          </figure>
+          <figure>
+            <img src="assets/oraple/gaussian/orange_gaussian_2.png" alt="Orange Gaussian stack level 2">
+            <figcaption>Level 2</figcaption>
+          </figure>
+          <figure>
+            <img src="assets/oraple/gaussian/orange_gaussian_3.png" alt="Orange Gaussian stack level 3">
+            <figcaption>Level 3</figcaption>
+          </figure>
+          <figure>
+            <img src="assets/oraple/gaussian/orange_gaussian_4.png" alt="Orange Gaussian stack level 4">
+            <figcaption>Level 4</figcaption>
+          </figure>
+          <figure>
+            <img src="assets/oraple/gaussian/orange_gaussian_5.png" alt="Orange Gaussian stack level 5">
+            <figcaption>Level 5</figcaption>
+          </figure>
+          <figure>
+            <img src="assets/oraple/gaussian/orange_gaussian_6.png" alt="Orange Gaussian stack level 6">
+            <figcaption>Level 6</figcaption>
+          </figure>
+          <figure>
+            <img src="assets/oraple/gaussian/orange_gaussian_7.png" alt="Orange Gaussian stack level 7">
+            <figcaption>Level 7</figcaption>
+          </figure>
+        </div>
+        <div class="stack-column">
+          <h3>Apple Laplacian stack</h3>
+          <figure>
+            <img src="assets/oraple/laplacian/apple_laplacian_0.png" alt="Apple Laplacian stack level 0">
+            <figcaption>Level 0</figcaption>
+          </figure>
+          <figure>
+            <img src="assets/oraple/laplacian/apple_laplacian_1.png" alt="Apple Laplacian stack level 1">
+            <figcaption>Level 1</figcaption>
+          </figure>
+          <figure>
+            <img src="assets/oraple/laplacian/apple_laplacian_2.png" alt="Apple Laplacian stack level 2">
+            <figcaption>Level 2</figcaption>
+          </figure>
+          <figure>
+            <img src="assets/oraple/laplacian/apple_laplacian_3.png" alt="Apple Laplacian stack level 3">
+            <figcaption>Level 3</figcaption>
+          </figure>
+          <figure>
+            <img src="assets/oraple/laplacian/apple_laplacian_4.png" alt="Apple Laplacian stack level 4">
+            <figcaption>Level 4</figcaption>
+          </figure>
+          <figure>
+            <img src="assets/oraple/laplacian/apple_laplacian_5.png" alt="Apple Laplacian stack level 5">
+            <figcaption>Level 5</figcaption>
+          </figure>
+          <figure>
+            <img src="assets/oraple/laplacian/apple_laplacian_6.png" alt="Apple Laplacian stack level 6">
+            <figcaption>Level 6</figcaption>
+          </figure>
+          <figure>
+            <img src="assets/oraple/laplacian/apple_laplacian_7.png" alt="Apple Laplacian stack level 7">
+            <figcaption>Level 7</figcaption>
+          </figure>
+        </div>
+        <div class="stack-column">
+          <h3>Orange Laplacian stack</h3>
+          <figure>
+            <img src="assets/oraple/laplacian/orange_laplacian_0.png" alt="Orange Laplacian stack level 0">
+            <figcaption>Level 0</figcaption>
+          </figure>
+          <figure>
+            <img src="assets/oraple/laplacian/orange_laplacian_1.png" alt="Orange Laplacian stack level 1">
+            <figcaption>Level 1</figcaption>
+          </figure>
+          <figure>
+            <img src="assets/oraple/laplacian/orange_laplacian_2.png" alt="Orange Laplacian stack level 2">
+            <figcaption>Level 2</figcaption>
+          </figure>
+          <figure>
+            <img src="assets/oraple/laplacian/orange_laplacian_3.png" alt="Orange Laplacian stack level 3">
+            <figcaption>Level 3</figcaption>
+          </figure>
+          <figure>
+            <img src="assets/oraple/laplacian/orange_laplacian_4.png" alt="Orange Laplacian stack level 4">
+            <figcaption>Level 4</figcaption>
+          </figure>
+          <figure>
+            <img src="assets/oraple/laplacian/orange_laplacian_5.png" alt="Orange Laplacian stack level 5">
+            <figcaption>Level 5</figcaption>
+          </figure>
+          <figure>
+            <img src="assets/oraple/laplacian/orange_laplacian_6.png" alt="Orange Laplacian stack level 6">
+            <figcaption>Level 6</figcaption>
+          </figure>
+          <figure>
+            <img src="assets/oraple/laplacian/orange_laplacian_7.png" alt="Orange Laplacian stack level 7">
+            <figcaption>Level 7</figcaption>
+          </figure>
+        </div>
+        </div>
+        <h3>Vertical mask stacks</h3>
+        <p>The binary step mask also has a Gaussian stack for blending and a Laplacian stack. Levels 0–6 show mask frequency bands; level 7 is the coarsest mask component.</p>
+        <div class="mask-stack-columns">
+          <div class="stack-column">
+            <h3>Mask Gaussian stack</h3>
+            <figure><img src="assets/oraple/mask/mask_gaussian_0.png" alt="Mask Gaussian stack level 0"><figcaption>Level 0</figcaption></figure>
+            <figure><img src="assets/oraple/mask/mask_gaussian_1.png" alt="Mask Gaussian stack level 1"><figcaption>Level 1</figcaption></figure>
+            <figure><img src="assets/oraple/mask/mask_gaussian_2.png" alt="Mask Gaussian stack level 2"><figcaption>Level 2</figcaption></figure>
+            <figure><img src="assets/oraple/mask/mask_gaussian_3.png" alt="Mask Gaussian stack level 3"><figcaption>Level 3</figcaption></figure>
+            <figure><img src="assets/oraple/mask/mask_gaussian_4.png" alt="Mask Gaussian stack level 4"><figcaption>Level 4</figcaption></figure>
+            <figure><img src="assets/oraple/mask/mask_gaussian_5.png" alt="Mask Gaussian stack level 5"><figcaption>Level 5</figcaption></figure>
+            <figure><img src="assets/oraple/mask/mask_gaussian_6.png" alt="Mask Gaussian stack level 6"><figcaption>Level 6</figcaption></figure>
+            <figure><img src="assets/oraple/mask/mask_gaussian_7.png" alt="Mask Gaussian stack level 7"><figcaption>Level 7</figcaption></figure>
+          </div>
+          <div class="stack-column">
+            <h3>Mask Laplacian stack</h3>
+            <figure><img src="assets/oraple/laplacian/mask_laplacian_0.png" alt="Mask Laplacian stack level 0"><figcaption>Level 0</figcaption></figure>
+            <figure><img src="assets/oraple/laplacian/mask_laplacian_1.png" alt="Mask Laplacian stack level 1"><figcaption>Level 1</figcaption></figure>
+            <figure><img src="assets/oraple/laplacian/mask_laplacian_2.png" alt="Mask Laplacian stack level 2"><figcaption>Level 2</figcaption></figure>
+            <figure><img src="assets/oraple/laplacian/mask_laplacian_3.png" alt="Mask Laplacian stack level 3"><figcaption>Level 3</figcaption></figure>
+            <figure><img src="assets/oraple/laplacian/mask_laplacian_4.png" alt="Mask Laplacian stack level 4"><figcaption>Level 4</figcaption></figure>
+            <figure><img src="assets/oraple/laplacian/mask_laplacian_5.png" alt="Mask Laplacian stack level 5"><figcaption>Level 5</figcaption></figure>
+            <figure><img src="assets/oraple/laplacian/mask_laplacian_6.png" alt="Mask Laplacian stack level 6"><figcaption>Level 6</figcaption></figure>
+            <figure><img src="assets/oraple/laplacian/mask_laplacian_7.png" alt="Mask Laplacian stack level 7"><figcaption>Level 7 · coarsest component</figcaption></figure>
+          </div>
+        </div>
+      </section>
+      <section>
+        <h2>Part 2.4 · Multiresolution Blending</h2>
+          <p>The Oraple uses a binary vertical step mask and an eight-level Gaussian mask stack (41 × 41 Gaussian, σ = 6) to create a smooth transition at each frequency level. 
+            Iris + Sun and Cup + Tunnel use soft circular masks as irregular regions, with 16 stack levels each for broader transitions across frequencies.</p>
+          <table class="figure-table">
+                <thead>
+                  <tr>
+                    <th scope="col">Apple contribution</th>
+                    <th scope="col">Orange contribution</th>
+                    <th scope="col">Blended result</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td>
+                      <img src="assets/oraple/figure342/oraple_a.png" alt="Apple high-frequency contribution">
+                      <p class="panel-label">(a)</p>
+                    </td>
+                    <td>
+                      <img src="assets/oraple/figure342/oraple_b.png" alt="Orange high-frequency contribution">
+                      <p class="panel-label">(b)</p>
+                    </td>
+                    <td>
+                      <img src="assets/oraple/figure342/oraple_c.png" alt="Blended high-frequency contribution">
+                      <p class="panel-label">(c)</p>
+                    </td>
+                  </tr>
+                  <tr>
+                    <td>
+                      <img src="assets/oraple/figure342/oraple_d.png" alt="Apple medium-frequency contribution">
+                      <p class="panel-label">(d)</p>
+                    </td>
+                    <td>
+                      <img src="assets/oraple/figure342/oraple_e.png" alt="Orange medium-frequency contribution">
+                      <p class="panel-label">(e)</p>
+                    </td>
+                    <td>
+                      <img src="assets/oraple/figure342/oraple_f.png" alt="Blended medium-frequency contribution">
+                      <p class="panel-label">(f)</p>
+                    </td>
+                  </tr>
+                  <tr>
+                    <td>
+                      <img src="assets/oraple/figure342/oraple_g.png" alt="Apple low-frequency contribution">
+                      <p class="panel-label">(g)</p>
+                    </td>
+                    <td>
+                      <img src="assets/oraple/figure342/oraple_h.png" alt="Orange low-frequency contribution">
+                      <p class="panel-label">(h)</p>
+                    </td>
+                    <td>
+                      <img src="assets/oraple/figure342/oraple_i.png" alt="Blended low-frequency contribution">
+                      <p class="panel-label">(i)</p>
+                    </td>
+                  </tr>
+                  <tr>
+                    <td>
+                      <img src="assets/oraple/figure342/oraple_j.png" alt="Masked apple">
+                      <p class="panel-label">(j)</p>
+                    </td>
+                    <td>
+                      <img src="assets/oraple/figure342/oraple_k.png" alt="Masked orange">
+                      <p class="panel-label">(k)</p>
+                    </td>
+                    <td>
+                      <img src="assets/oraple/figure342/oraple_l.png" alt="Final oraple">
+                      <p class="panel-label">(l)</p>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+              <h3>Iris + Sun</h3>
+              <p>
+                A circular mask centered on the pupil selects the pupil and the deep orange inner iris in the original photo while leaving most of the paler outer iris out. 
+                I use 16 stack levels; the coarsest two mix 25% of the Sun's illumination through the selected area. This was supposed to allow
+                for better blending, although there is still a large contrast where the two images meet. I think this may due to the difference in brightness
+                between the two images (go figure, the sun is bright!). The magnitude difference means that even with the band of blending color, the 
+                difference is not masked well.</p>
+              <div class="grid">
+                <figure><img src="assets/iris_sun/iris_original.png" alt="Iris input"><figcaption>Iris input</figcaption></figure>
+                <figure><img src="assets/iris_sun/sun_original.png" alt="Grayscale NASA Solar Dynamics Observatory image of the Sun in the AIA 304 angstrom band"><figcaption>Grayscale conversion of real NASA/SDO AIA 304 Å observation · <a href="https://commons.wikimedia.org/wiki/File:The_Sun_by_the_Atmospheric_Imaging_Assembly_of_NASA's_Solar_Dynamics_Observatory_-_20100819.jpg">source image</a></figcaption></figure>
+                <figure><img src="assets/iris_sun/circular_mask.png" alt="Soft circular mask over the pupil and inner iris"><figcaption>Circular inner-iris mask</figcaption></figure>
+                <figure><img src="assets/iris_sun/iris_sun_final.png" alt="Iris sun blend"><figcaption>Final Iris + Sun blend</figcaption></figure>
+              </div>
+              <h3>Combined stack visualization</h3>
+              <table class="figure-table">
+                <thead><tr><th scope="col">Iris contribution</th><th scope="col">Sun contribution</th><th scope="col">Blended result</th></tr></thead>
+                <tbody>
+                  <tr><td><img src="assets/iris_sun/figure342/iris_sun_a.png" alt="Iris high-frequency contribution"><p class="panel-label">(a)</p></td><td><img src="assets/iris_sun/figure342/iris_sun_b.png" alt="Sun high-frequency contribution"><p class="panel-label">(b)</p></td><td><img src="assets/iris_sun/figure342/iris_sun_c.png" alt="Blended high-frequency contribution"><p class="panel-label">(c)</p></td></tr>
+                  <tr><td><img src="assets/iris_sun/figure342/iris_sun_d.png" alt="Iris medium-frequency contribution"><p class="panel-label">(d)</p></td><td><img src="assets/iris_sun/figure342/iris_sun_e.png" alt="Sun medium-frequency contribution"><p class="panel-label">(e)</p></td><td><img src="assets/iris_sun/figure342/iris_sun_f.png" alt="Blended medium-frequency contribution"><p class="panel-label">(f)</p></td></tr>
+                  <tr><td><img src="assets/iris_sun/figure342/iris_sun_g.png" alt="Iris low-frequency contribution"><p class="panel-label">(g)</p></td><td><img src="assets/iris_sun/figure342/iris_sun_h.png" alt="Sun low-frequency contribution"><p class="panel-label">(h)</p></td><td><img src="assets/iris_sun/figure342/iris_sun_i.png" alt="Blended low-frequency contribution"><p class="panel-label">(i)</p></td></tr>
+                  <tr><td><img src="assets/iris_sun/figure342/iris_sun_j.png" alt="Masked iris"><p class="panel-label">(j)</p></td><td><img src="assets/iris_sun/figure342/iris_sun_k.png" alt="Masked sun"><p class="panel-label">(k)</p></td><td><img src="assets/iris_sun/figure342/iris_sun_l.png" alt="Final Iris and Sun blend"><p class="panel-label">(l)</p></td></tr>
+                </tbody>
+              </table>
+              <h3>Mask and band blending · every other level</h3>
+              <p>For each level, the displayed mask weight multiplies that level's iris Laplacian band; its complement multiplies the Sun band. Those two masked bands are then added. The final levels include the 25% Sun-light adjustment.</p>
+              <table class="figure-table">
+                <thead><tr><th scope="col">Mask weight</th><th scope="col">Masked iris band</th><th scope="col">Masked Sun band</th><th scope="col">Blended level</th></tr></thead>
+                <tbody>
+                  <tr><td><img src="assets/iris_sun/mask/mask_blend_weight_0.png" alt="Iris mask weight at level 0"><p class="panel-label">Level 0</p></td><td><img src="assets/iris_sun/figure/iris_part_0.png" alt="Masked iris Laplacian band at level 0"></td><td><img src="assets/iris_sun/figure/sun_part_0.png" alt="Masked Sun Laplacian band at level 0"></td><td><img src="assets/iris_sun/figure/blended_part_0.png" alt="Blended Iris and Sun band at level 0"></td></tr>
+                  <tr><td><img src="assets/iris_sun/mask/mask_blend_weight_2.png" alt="Iris mask weight at level 2"><p class="panel-label">Level 2</p></td><td><img src="assets/iris_sun/figure/iris_part_2.png" alt="Masked iris Laplacian band at level 2"></td><td><img src="assets/iris_sun/figure/sun_part_2.png" alt="Masked Sun Laplacian band at level 2"></td><td><img src="assets/iris_sun/figure/blended_part_2.png" alt="Blended Iris and Sun band at level 2"></td></tr>
+                  <tr><td><img src="assets/iris_sun/mask/mask_blend_weight_4.png" alt="Iris mask weight at level 4"><p class="panel-label">Level 4</p></td><td><img src="assets/iris_sun/figure/iris_part_4.png" alt="Masked iris Laplacian band at level 4"></td><td><img src="assets/iris_sun/figure/sun_part_4.png" alt="Masked Sun Laplacian band at level 4"></td><td><img src="assets/iris_sun/figure/blended_part_4.png" alt="Blended Iris and Sun band at level 4"></td></tr>
+                  <tr><td><img src="assets/iris_sun/mask/mask_blend_weight_6.png" alt="Iris mask weight at level 6"><p class="panel-label">Level 6</p></td><td><img src="assets/iris_sun/figure/iris_part_6.png" alt="Masked iris Laplacian band at level 6"></td><td><img src="assets/iris_sun/figure/sun_part_6.png" alt="Masked Sun Laplacian band at level 6"></td><td><img src="assets/iris_sun/figure/blended_part_6.png" alt="Blended Iris and Sun band at level 6"></td></tr>
+                  <tr><td><img src="assets/iris_sun/mask/mask_blend_weight_8.png" alt="Iris mask weight at level 8"><p class="panel-label">Level 8</p></td><td><img src="assets/iris_sun/figure/iris_part_8.png" alt="Masked iris Laplacian band at level 8"></td><td><img src="assets/iris_sun/figure/sun_part_8.png" alt="Masked Sun Laplacian band at level 8"></td><td><img src="assets/iris_sun/figure/blended_part_8.png" alt="Blended Iris and Sun band at level 8"></td></tr>
+                  <tr><td><img src="assets/iris_sun/mask/mask_blend_weight_10.png" alt="Iris mask weight at level 10"><p class="panel-label">Level 10</p></td><td><img src="assets/iris_sun/figure/iris_part_10.png" alt="Masked iris Laplacian band at level 10"></td><td><img src="assets/iris_sun/figure/sun_part_10.png" alt="Masked Sun Laplacian band at level 10"></td><td><img src="assets/iris_sun/figure/blended_part_10.png" alt="Blended Iris and Sun band at level 10"></td></tr>
+                  <tr><td><img src="assets/iris_sun/mask/mask_blend_weight_12.png" alt="Iris mask weight at level 12"><p class="panel-label">Level 12</p></td><td><img src="assets/iris_sun/figure/iris_part_12.png" alt="Masked iris Laplacian band at level 12"></td><td><img src="assets/iris_sun/figure/sun_part_12.png" alt="Masked Sun Laplacian band at level 12"></td><td><img src="assets/iris_sun/figure/blended_part_12.png" alt="Blended Iris and Sun band at level 12"></td></tr>
+                  <tr><td><img src="assets/iris_sun/mask/mask_blend_weight_14.png" alt="Iris mask weight at level 14"><p class="panel-label">Level 14</p></td><td><img src="assets/iris_sun/figure/iris_part_14.png" alt="Masked iris Laplacian band at level 14"></td><td><img src="assets/iris_sun/figure/sun_part_14.png" alt="Masked Sun Laplacian band at level 14"></td><td><img src="assets/iris_sun/figure/blended_part_14.png" alt="Blended Iris and Sun band at level 14"></td></tr>
+                </tbody>
+              </table>
+              <h3>Cup + Tunnel</h3>
+              <p>I scale and align the coffee surface with the tunnel opening, isolating it from the red tabletop and porcelain rim. 
+                I convert both images to grayscale before blending. A broad circular blend mask fades the edge through 16 stack levels, 
+                and the coarsest two mix 25% of the tunnel's light into the coffee. This result is also a bit weak, I think due to 
+                some misalignment that I can't fix, in addition to the brightness difference between the two images.
+                
+              </p>
+              <div class="grid">
+                <figure><img src="assets/cup_tunnel/cup_original.png" alt="Cup input"><figcaption>Cup input</figcaption></figure>
+                <figure><img src="assets/cup_tunnel/cup_aligned.png" alt="Isolated coffee surface aligned with the tunnel opening"><figcaption>Coffee surface aligned with the opening</figcaption></figure>
+                <figure><img src="assets/cup_tunnel/tunnel_original.png" alt="Tunnel input"><figcaption>Tunnel input</figcaption></figure>
+                <figure><img src="assets/cup_tunnel/circular_mask.png" alt="Circular blending mask"><figcaption>Circular blending mask</figcaption></figure>
+                <figure><img src="assets/cup_tunnel/cup_tunnel_final.png" alt="Cup and Tunnel blend"><figcaption>Final Cup + Tunnel blend</figcaption></figure>
+              </div>
+              <h3>Combined stack visualization</h3>
+              <table class="figure-table">
+                <thead><tr><th scope="col">Cup contribution</th><th scope="col">Tunnel contribution</th><th scope="col">Blended result</th></tr></thead>
+                <tbody>
+                  <tr><td><img src="assets/cup_tunnel/figure342/cup_tunnel_a.png" alt="Cup high-frequency contribution"><p class="panel-label">(a)</p></td><td><img src="assets/cup_tunnel/figure342/cup_tunnel_b.png" alt="Tunnel high-frequency contribution"><p class="panel-label">(b)</p></td><td><img src="assets/cup_tunnel/figure342/cup_tunnel_c.png" alt="Blended high-frequency contribution"><p class="panel-label">(c)</p></td></tr>
+                  <tr><td><img src="assets/cup_tunnel/figure342/cup_tunnel_d.png" alt="Cup medium-frequency contribution"><p class="panel-label">(d)</p></td><td><img src="assets/cup_tunnel/figure342/cup_tunnel_e.png" alt="Tunnel medium-frequency contribution"><p class="panel-label">(e)</p></td><td><img src="assets/cup_tunnel/figure342/cup_tunnel_f.png" alt="Blended medium-frequency contribution"><p class="panel-label">(f)</p></td></tr>
+                  <tr><td><img src="assets/cup_tunnel/figure342/cup_tunnel_g.png" alt="Cup low-frequency contribution"><p class="panel-label">(g)</p></td><td><img src="assets/cup_tunnel/figure342/cup_tunnel_h.png" alt="Tunnel low-frequency contribution"><p class="panel-label">(h)</p></td><td><img src="assets/cup_tunnel/figure342/cup_tunnel_i.png" alt="Blended low-frequency contribution"><p class="panel-label">(i)</p></td></tr>
+                  <tr><td><img src="assets/cup_tunnel/figure342/cup_tunnel_j.png" alt="Masked Cup"><p class="panel-label">(j)</p></td><td><img src="assets/cup_tunnel/figure342/cup_tunnel_k.png" alt="Masked Tunnel"><p class="panel-label">(k)</p></td><td><img src="assets/cup_tunnel/figure342/cup_tunnel_l.png" alt="Final Cup and Tunnel blend"><p class="panel-label">(l)</p></td></tr>
+                </tbody>
+              </table>
+              <h3>Mask and band blending · every other level</h3>
+              <p>At each displayed level, the Gaussian-stack mask weights the coffee Laplacian band, while its complement weights the tunnel band. Adding the two masked bands gives the blended level; the coarsest levels also include the 25% tunnel-light adjustment.</p>
+              <table class="figure-table">
+                <thead><tr><th scope="col">Mask weight</th><th scope="col">Masked coffee band</th><th scope="col">Masked tunnel band</th><th scope="col">Blended level</th></tr></thead>
+                <tbody>
+                  <tr><td><img src="assets/cup_tunnel/mask/mask_blend_weight_0.png" alt="Cup mask weight at level 0"><p class="panel-label">Level 0</p></td><td><img src="assets/cup_tunnel/figure/cup_part_0.png" alt="Masked coffee Laplacian band at level 0"></td><td><img src="assets/cup_tunnel/figure/tunnel_part_0.png" alt="Masked tunnel Laplacian band at level 0"></td><td><img src="assets/cup_tunnel/figure/blended_part_0.png" alt="Blended coffee and tunnel band at level 0"></td></tr>
+                  <tr><td><img src="assets/cup_tunnel/mask/mask_blend_weight_2.png" alt="Cup mask weight at level 2"><p class="panel-label">Level 2</p></td><td><img src="assets/cup_tunnel/figure/cup_part_2.png" alt="Masked coffee Laplacian band at level 2"></td><td><img src="assets/cup_tunnel/figure/tunnel_part_2.png" alt="Masked tunnel Laplacian band at level 2"></td><td><img src="assets/cup_tunnel/figure/blended_part_2.png" alt="Blended coffee and tunnel band at level 2"></td></tr>
+                  <tr><td><img src="assets/cup_tunnel/mask/mask_blend_weight_4.png" alt="Cup mask weight at level 4"><p class="panel-label">Level 4</p></td><td><img src="assets/cup_tunnel/figure/cup_part_4.png" alt="Masked coffee Laplacian band at level 4"></td><td><img src="assets/cup_tunnel/figure/tunnel_part_4.png" alt="Masked tunnel Laplacian band at level 4"></td><td><img src="assets/cup_tunnel/figure/blended_part_4.png" alt="Blended coffee and tunnel band at level 4"></td></tr>
+                  <tr><td><img src="assets/cup_tunnel/mask/mask_blend_weight_6.png" alt="Cup mask weight at level 6"><p class="panel-label">Level 6</p></td><td><img src="assets/cup_tunnel/figure/cup_part_6.png" alt="Masked coffee Laplacian band at level 6"></td><td><img src="assets/cup_tunnel/figure/tunnel_part_6.png" alt="Masked tunnel Laplacian band at level 6"></td><td><img src="assets/cup_tunnel/figure/blended_part_6.png" alt="Blended coffee and tunnel band at level 6"></td></tr>
+                  <tr><td><img src="assets/cup_tunnel/mask/mask_blend_weight_8.png" alt="Cup mask weight at level 8"><p class="panel-label">Level 8</p></td><td><img src="assets/cup_tunnel/figure/cup_part_8.png" alt="Masked coffee Laplacian band at level 8"></td><td><img src="assets/cup_tunnel/figure/tunnel_part_8.png" alt="Masked tunnel Laplacian band at level 8"></td><td><img src="assets/cup_tunnel/figure/blended_part_8.png" alt="Blended coffee and tunnel band at level 8"></td></tr>
+                  <tr><td><img src="assets/cup_tunnel/mask/mask_blend_weight_10.png" alt="Cup mask weight at level 10"><p class="panel-label">Level 10</p></td><td><img src="assets/cup_tunnel/figure/cup_part_10.png" alt="Masked coffee Laplacian band at level 10"></td><td><img src="assets/cup_tunnel/figure/tunnel_part_10.png" alt="Masked tunnel Laplacian band at level 10"></td><td><img src="assets/cup_tunnel/figure/blended_part_10.png" alt="Blended coffee and tunnel band at level 10"></td></tr>
+                  <tr><td><img src="assets/cup_tunnel/mask/mask_blend_weight_12.png" alt="Cup mask weight at level 12"><p class="panel-label">Level 12</p></td><td><img src="assets/cup_tunnel/figure/cup_part_12.png" alt="Masked coffee Laplacian band at level 12"></td><td><img src="assets/cup_tunnel/figure/tunnel_part_12.png" alt="Masked tunnel Laplacian band at level 12"></td><td><img src="assets/cup_tunnel/figure/blended_part_12.png" alt="Blended coffee and tunnel band at level 12"></td></tr>
+                  <tr><td><img src="assets/cup_tunnel/mask/mask_blend_weight_14.png" alt="Cup mask weight at level 14"><p class="panel-label">Level 14</p></td><td><img src="assets/cup_tunnel/figure/cup_part_14.png" alt="Masked coffee Laplacian band at level 14"></td><td><img src="assets/cup_tunnel/figure/tunnel_part_14.png" alt="Masked tunnel Laplacian band at level 14"></td><td><img src="assets/cup_tunnel/figure/blended_part_14.png" alt="Blended coffee and tunnel band at level 14"></td></tr>
+                </tbody>
+              </table>
+            </section>
+            <footer>Most important takeaway: I now have a much better understanding of the importance of preserving both high and low frequencies in an image. High frequencies capture fine details, especially edges, while low frequencies preserve slowly changing structure. Both are equally important to maintaining image quality. · CS 180 · Intro to Computer Vision and Computational Photography</footer>
+          </main>
+        </body>
+      </html>
