@@ -1,3 +1,15 @@
 # Private implementation and source data stay local; published HTML and output images remain tracked.
 project1/main.py
 project1/CS180_fa2026_proj1_data/
+
+# Keep assignment implementations and code archives out of the public repository.
+*.py
+*.pyc
+*.ipynb
+*.zip
+__pycache__/
+.ipynb_checkpoints/
+
+# Private submission artifacts (contain assignment code).
+/output/submissions/
+/output/pdf/project4a-page.pdf
