@@ -1,22 +1,1023 @@
-<!doctype html>
-<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="description" content="Theo Dela Cruz’s CS 180 Project 4A: homographies, inverse image warping, image rectification, and feather-blended photo mosaics."><title>Project 4A · Image Warping &amp; Mosaicing | Theo Dela Cruz</title><style>
-:root{color-scheme:light;--ink:#202124;--muted:#666b73;--line:#dfe1e5;--paper:#fbfbfa;--accent:#92703b}
-*{box-sizing:border-box}html{scroll-behavior:smooth;scroll-padding-top:28px}body{margin:0;background:var(--paper);color:var(--ink);font:16px/1.65 Arial,Helvetica,sans-serif}main{max-width:1100px;margin:auto;padding:48px 24px 64px}a{color:var(--accent);text-underline-offset:4px}a:hover{color:var(--ink)}a:focus-visible{outline:3px solid var(--accent);outline-offset:4px}.back{color:var(--muted);font-size:.9rem;text-decoration:none}header{padding:38px 0 30px;border-bottom:1px solid var(--line)}.eyebrow,.section-label{margin:0 0 12px;color:var(--accent);font-size:.78rem;font-weight:700;letter-spacing:.12em;text-transform:uppercase}h1,h2,h3{font-family:Georgia,'Times New Roman',serif;font-weight:500;line-height:1.15}h1{font-size:clamp(2.8rem,7vw,4.8rem);margin:0;max-width:850px}h2{font-size:2.1rem;margin:0 0 18px}h3{font-size:1.5rem;margin:32px 0 12px}p{max-width:850px}.intro{font-size:1.1rem;color:var(--muted);max-width:740px;margin:22px 0}.meta{display:flex;flex-wrap:wrap;gap:8px 28px;color:var(--muted);font-size:.86rem}nav{padding:22px 0;border-bottom:1px solid var(--line)}nav ol{display:flex;flex-wrap:wrap;gap:8px 28px;list-style:none;padding:0;margin:0;font-size:.9rem}section{padding:44px 0;border-bottom:1px solid var(--line)}section:target h2{color:var(--accent)}figure{min-width:0;margin:22px 0 0;border:1px solid var(--line);background:white}figure>a{display:block}.correspondences svg{display:block;width:100%;height:auto}.sources svg{display:block;width:100%;height:280px;background:#f0efeb}img{display:block;width:100%;height:auto}figcaption{padding:12px 16px;color:var(--muted);font-size:.84rem;line-height:1.5}.hero{margin-top:30px}.hero img{max-height:520px;object-fit:contain;background:#eeece7}.grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:18px;margin-top:22px}.grid.three{grid-template-columns:repeat(3,minmax(0,1fr))}.grid figure{margin:0}.sources img{height:280px;object-fit:contain;background:#f0efeb}.rectifications img{max-height:440px;object-fit:contain;background:#f0efeb}.result img{max-height:650px;object-fit:contain;background:#eeece7}.equation{padding:18px 22px;margin:22px 0;background:#f0efeb;border-left:3px solid var(--accent);font:1.08rem/1.7 Georgia,serif;overflow-x:auto}.equation span{display:block;white-space:nowrap}.note{color:var(--muted);font-size:.9rem}.method{max-width:850px;padding-left:22px}.method li{padding:5px 0}.matrix{white-space:pre;font: .9rem/1.7 monospace;background:#f0efeb;padding:18px;overflow:auto}.callout{margin:24px 0 0;padding:18px 22px;border-left:3px solid var(--accent);background:#f4efe4}.callout p{margin:0}code{font-size:.88em}details{margin-top:22px}summary{color:var(--accent);cursor:pointer}footer{padding-top:30px;color:var(--muted);font-size:.86rem;display:flex;justify-content:space-between;flex-wrap:wrap;gap:14px}article+article{margin-top:44px;padding-top:12px;border-top:1px solid var(--line)}.skip{position:absolute;left:16px;top:-100px;background:white;padding:10px}.skip:focus{top:10px}
-@media(max-width:650px){main{padding:28px 18px 44px}header{padding-top:28px}h2{font-size:1.8rem}section{padding:32px 0}.grid,.grid.three{grid-template-columns:1fr}.sources img,.sources svg{height:auto;max-height:360px}.rectifications{grid-template-columns:repeat(2,minmax(0,1fr))}.rectifications figcaption{padding:10px;font-size:.78rem}nav ol{gap:10px 18px}.equation{font-size:1rem;padding:14px}.hero img{max-height:340px}}
-@media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}}
-@media print{main{max-width:none;padding:0}body{background:white;font-size:10pt}.back,nav,.skip{display:none}header{padding-top:0}h1{font-size:34pt}h2{font-size:23pt}section{padding:22px 0}figure,.equation{break-inside:avoid}.grid.three{grid-template-columns:repeat(3,minmax(0,1fr))}.result img{max-height:160mm}a{color:inherit}}
-</style></head><body><a class="skip" href="#capture">Skip to project content</a><main>
-<a class="back" href="../index.html">← Back to all projects</a>
-<header><p class="eyebrow">CS 180 · Project 4A</p><h1>Image Warping<br>&amp; Mosaicing</h1><p class="intro">Recovering perspective, rectifying planar surfaces, and stitching overlapping photographs into a shared view.</p><figure class="hero"><a href="assets/results/plaza_mosaic.png" aria-label="Open full-size: Lower Sproul"><img src="assets/web/plaza_mosaic.webp" width="1800" height="1269" loading="lazy" decoding="async" alt="Lower Sproul"></a><figcaption>Lower Sproul</figcaption></figure></header>
-<nav aria-label="Project sections"><ol><li><a href="#capture">01 / Source photographs</a></li><li><a href="#homographies">02 / Homographies</a></li><li><a href="#rectification">03 / Rectification</a></li><li><a href="#mosaics">04 / Mosaics</a></li><li><a href="#takeaways">05 / Reflection</a></li></ol></nav>
-<section id="capture"><p class="section-label">01 / Shoot the pictures</p><h2>Overlapping views of campus</h2><p>The source photographs show The Gateway, Doe Library, and Lower Sproul. </p><h3>The Gateway</h3><div class="grid sources"><figure><a href="assets/IMG_4888.jpg" aria-label="Open full-size: Left"><img src="assets/web/IMG_4888.webp" width="1600" height="1200" loading="lazy" decoding="async" alt="Left"></a><figcaption>Left</figcaption></figure><figure><a href="assets/IMG_4890.jpg" aria-label="Open full-size: Right
-       "><img src="assets/web/IMG_4890.webp" width="1600" height="1200" loading="lazy" decoding="async" alt="Right source"></a><figcaption>Right</figcaption></figure></div><h3>Doe Library</h3><div class="grid sources"><figure><a href="assets/IMG_4896.jpg" aria-label="Open full-size: Left"><img src="assets/web/IMG_4896.webp" width="1050" height="1400" loading="lazy" decoding="async" alt="Left"></a><figcaption>Left</figcaption></figure><figure><a href="assets/IMG_4897.jpg" aria-label="Open full-size: Right"><img src="assets/web/IMG_4897.webp" width="1050" height="1400" loading="lazy" decoding="async" alt="Right"></a><figcaption>Right</figcaption></figure></div><h3>Lower Sproul</h3><div class="grid sources"><figure><a href="assets/IMG_4927.jpg" aria-label="Open full-size: Left"><img src="assets/web/IMG_4927.webp" width="1600" height="1200" loading="lazy" decoding="async" alt="Left"></a><figcaption>Left</figcaption></figure><figure><a href="assets/IMG_4929.jpg" aria-label="Open full-size: Right"><img src="assets/web/IMG_4929.webp" width="1600" height="1200" loading="lazy" decoding="async" alt="Right"></a><figcaption>Right</figcaption></figure></div></section>
-<section id="homographies"><p class="section-label">02 / Recover homographies</p><h2>One plane, two perspectives</h2><p>A homography maps a point in one view to its corresponding point in another. The 3 × 3 matrix has eight free parameters after fixing its last entry to 1. At least four point pairs in a non-degenerate configuration are needed; additional pairs form an overdetermined system.</p><div class="equation" aria-label="Homography mapping"><span>[u, v, w]ᵀ = H [x, y, 1]ᵀ</span><span>x′ = u / w &nbsp;&nbsp; y′ = v / w</span></div><p>For each correspondence, <code>computeH</code> adds two equations to <code>A h = b</code> and solves with <code>numpy.linalg.lstsq</code>. This minimizes the algebraic residual across the input point pairs.</p><div class="equation"><span>[x, y, 1, 0, 0, 0, −xx′, −yx′] h = x′</span><span>[0, 0, 0, x, y, 1, −xy′, −yy′] h = y′</span></div><h3>Inverse warping</h3><p>The warp first transforms the image corners to determine the output bounds. It then visits every destination pixel, adds the canvas origin offset, and applies H⁻¹ to find its source coordinate. Sampling the source this way avoids the holes that forward pixel mapping can leave behind.</p><h3>Correspondences and recovered matrices</h3><p>Matching colors and numbers show corresponding locations in the two images. Each matrix maps the left image into the right image’s coordinates at the 1200-pixel working scale, with h₃₃ = 1.</p><article><h3>The Gateway</h3><figure class="correspondences"><svg viewBox="0 0 1000 400.00" role="img" aria-label="Eight numbered landmark correspondences between the left and right images" xmlns="http://www.w3.org/2000/svg"><title>The Gateway: corresponding landmarks</title><rect width="1000" height="100%" fill="#202124"/><image href="assets/web/IMG_4888.webp" x="0" y="28" width="480" height="360.00"/><text x="12" y="19" fill="white" font-family="Arial" font-size="14">Left</text><image href="assets/web/IMG_4890.webp" x="520" y="28" width="480" height="360.00"/><text x="532" y="19" fill="white" font-family="Arial" font-size="14">Right</text><line x1="168.91" y1="159.30" x2="583.89" y2="139.56" stroke="#ffe000" stroke-width="1" opacity=".35"/><circle cx="168.91" cy="159.30" r="4" fill="#ffe000" stroke="#111" stroke-width="1.5"/><text x="175.91" y="152.30" fill="#ffe000" stroke="#111" stroke-width="3" paint-order="stroke" font-family="Arial" font-weight="bold" font-size="16">1</text><circle cx="583.89" cy="139.56" r="4" fill="#ffe000" stroke="#111" stroke-width="1.5"/><text x="590.89" y="132.56" fill="#ffe000" stroke="#111" stroke-width="3" paint-order="stroke" font-family="Arial" font-weight="bold" font-size="16">1</text><line x1="173.64" y1="227.34" x2="586.35" y2="215.43" stroke="#00e5ff" stroke-width="1" opacity=".35"/><circle cx="173.64" cy="227.34" r="4" fill="#00e5ff" stroke="#111" stroke-width="1.5"/><text x="180.64" y="220.34" fill="#00e5ff" stroke="#111" stroke-width="3" paint-order="stroke" font-family="Arial" font-weight="bold" font-size="16">2</text><circle cx="586.35" cy="215.43" r="4" fill="#00e5ff" stroke="#111" stroke-width="1.5"/><text x="593.35" y="208.43" fill="#00e5ff" stroke="#111" stroke-width="3" paint-order="stroke" font-family="Arial" font-weight="bold" font-size="16">2</text><line x1="254.35" y1="169.06" x2="681.41" y2="157.58" stroke="#ff628c" stroke-width="1" opacity=".35"/><circle cx="254.35" cy="169.06" r="4" fill="#ff628c" stroke="#111" stroke-width="1.5"/><text x="261.35" y="162.06" fill="#ff628c" stroke="#111" stroke-width="3" paint-order="stroke" font-family="Arial" font-weight="bold" font-size="16">3</text><circle cx="681.41" cy="157.58" r="4" fill="#ff628c" stroke="#111" stroke-width="1.5"/><text x="688.41" y="150.58" fill="#ff628c" stroke="#111" stroke-width="3" paint-order="stroke" font-family="Arial" font-weight="bold" font-size="16">3</text><line x1="339.16" y1="251.35" x2="762.86" y2="244.18" stroke="#80ff6b" stroke-width="1" opacity=".35"/><circle cx="339.16" cy="251.35" r="4" fill="#80ff6b" stroke="#111" stroke-width="1.5"/><text x="346.16" y="244.35" fill="#80ff6b" stroke="#111" stroke-width="3" paint-order="stroke" font-family="Arial" font-weight="bold" font-size="16">4</text><circle cx="762.86" cy="244.18" r="4" fill="#80ff6b" stroke="#111" stroke-width="1.5"/><text x="769.86" y="237.18" fill="#80ff6b" stroke="#111" stroke-width="3" paint-order="stroke" font-family="Arial" font-weight="bold" font-size="16">4</text><line x1="167.97" y1="254.09" x2="578.40" y2="244.63" stroke="#ff9900" stroke-width="1" opacity=".35"/><circle cx="167.97" cy="254.09" r="4" fill="#ff9900" stroke="#111" stroke-width="1.5"/><text x="174.97" y="247.09" fill="#ff9900" stroke="#111" stroke-width="3" paint-order="stroke" font-family="Arial" font-weight="bold" font-size="16">5</text><circle cx="578.40" cy="244.63" r="4" fill="#ff9900" stroke="#111" stroke-width="1.5"/><text x="585.40" y="237.63" fill="#ff9900" stroke="#111" stroke-width="3" paint-order="stroke" font-family="Arial" font-weight="bold" font-size="16">5</text><line x1="432.48" y1="139.48" x2="849.28" y2="143.10" stroke="#c6a0ff" stroke-width="1" opacity=".35"/><circle cx="432.48" cy="139.48" r="4" fill="#c6a0ff" stroke="#111" stroke-width="1.5"/><text x="439.48" y="132.48" fill="#c6a0ff" stroke="#111" stroke-width="3" paint-order="stroke" font-family="Arial" font-weight="bold" font-size="16">6</text><circle cx="849.28" cy="143.10" r="4" fill="#c6a0ff" stroke="#111" stroke-width="1.5"/><text x="856.28" y="136.10" fill="#c6a0ff" stroke="#111" stroke-width="3" paint-order="stroke" font-family="Arial" font-weight="bold" font-size="16">6</text><line x1="150.10" y1="109.18" x2="563.09" y2="81.54" stroke="#ffffff" stroke-width="1" opacity=".35"/><circle cx="150.10" cy="109.18" r="4" fill="#ffffff" stroke="#111" stroke-width="1.5"/><text x="157.10" y="102.18" fill="#ffffff" stroke="#111" stroke-width="3" paint-order="stroke" font-family="Arial" font-weight="bold" font-size="16">7</text><circle cx="563.09" cy="81.54" r="4" fill="#ffffff" stroke="#111" stroke-width="1.5"/><text x="570.09" y="74.54" fill="#ffffff" stroke="#111" stroke-width="3" paint-order="stroke" font-family="Arial" font-weight="bold" font-size="16">7</text><line x1="364.39" y1="164.58" x2="789.21" y2="161.97" stroke="#50ffd0" stroke-width="1" opacity=".35"/><circle cx="364.39" cy="164.58" r="4" fill="#50ffd0" stroke="#111" stroke-width="1.5"/><text x="371.39" y="157.58" fill="#50ffd0" stroke="#111" stroke-width="3" paint-order="stroke" font-family="Arial" font-weight="bold" font-size="16">8</text><circle cx="789.21" cy="161.97" r="4" fill="#50ffd0" stroke="#111" stroke-width="1.5"/><text x="796.21" y="154.97" fill="#50ffd0" stroke="#111" stroke-width="3" paint-order="stroke" font-family="Arial" font-weight="bold" font-size="16">8</text></svg></figure><pre class="matrix" aria-label="Recovered homography matrix">H = [  1.4908180  -0.0457156  -427.1008497
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8"/>
+    <meta content="width=device-width, initial-scale=1" name="viewport"/>
+    <meta content="Theo Dela Cruz’s CS 180 Project 4A: homographies, inverse image warping, image rectification, and feather-blended photo mosaics." name="description"/>
+    <title>Project 4A · Image Warping & Mosaicing | Theo Dela Cruz</title>
+    <style>
+      :root {
+        color-scheme: light;
+        --ink: #202124;
+        --muted: #666b73;
+        --line: #dfe1e5;
+        --paper: #fbfbfa;
+        --accent: #92703b;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      html {
+        scroll-behavior: smooth;
+        scroll-padding-top: 28px;
+      }
+
+      body {
+        margin: 0;
+        background: var(--paper);
+        color: var(--ink);
+        font: 16px/1.65 Arial,Helvetica,sans-serif;
+      }
+
+      main {
+        max-width: 1100px;
+        margin: auto;
+        padding: 48px 24px 64px;
+      }
+
+      a {
+        color: var(--accent);
+        text-underline-offset: 4px;
+      }
+
+      a:hover {
+        color: var(--ink);
+      }
+
+      a:focus-visible {
+        outline: 3px solid var(--accent);
+        outline-offset: 4px;
+      }
+
+      .back {
+        color: var(--muted);
+        font-size: .9rem;
+        text-decoration: none;
+      }
+
+      header {
+        padding: 38px 0 30px;
+        border-bottom: 1px solid var(--line);
+      }
+
+      .eyebrow,.section-label {
+        margin: 0 0 12px;
+        color: var(--accent);
+        font-size: .78rem;
+        font-weight: 700;
+        letter-spacing: .12em;
+        text-transform: uppercase;
+      }
+
+      h1,h2,h3 {
+        font-family: Georgia,"Times New Roman",serif;
+        font-weight: 500;
+        line-height: 1.15;
+      }
+
+      h1 {
+        font-size: clamp(2.8rem,7vw,4.8rem);
+        margin: 0;
+        max-width: 850px;
+      }
+
+      h2 {
+        font-size: 2.1rem;
+        margin: 0 0 18px;
+      }
+
+      h3 {
+        font-size: 1.5rem;
+        margin: 32px 0 12px;
+      }
+
+      p {
+        max-width: 850px;
+      }
+
+      .intro {
+        font-size: 1.1rem;
+        color: var(--muted);
+        max-width: 740px;
+        margin: 22px 0;
+      }
+
+      .meta {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px 28px;
+        color: var(--muted);
+        font-size: .86rem;
+      }
+
+      nav {
+        padding: 22px 0;
+        border-bottom: 1px solid var(--line);
+      }
+
+      nav ol {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px 28px;
+        list-style: none;
+        padding: 0;
+        margin: 0;
+        font-size: .9rem;
+      }
+
+      section {
+        padding: 44px 0;
+        border-bottom: 1px solid var(--line);
+      }
+
+      section:target h2 {
+        color: var(--accent);
+      }
+
+      figure {
+        min-width: 0;
+        margin: 22px 0 0;
+        border: 1px solid var(--line);
+        background: white;
+      }
+
+      figure>a {
+        display: block;
+      }
+
+      .correspondences svg {
+        display: block;
+        width: 100%;
+        height: auto;
+      }
+
+      .sources svg {
+        display: block;
+        width: 100%;
+        height: 280px;
+        background: #f0efeb;
+      }
+
+      img {
+        display: block;
+        width: 100%;
+        height: auto;
+      }
+
+      figcaption {
+        padding: 12px 16px;
+        color: var(--muted);
+        font-size: .84rem;
+        line-height: 1.5;
+      }
+
+      .hero {
+        margin-top: 30px;
+      }
+
+      .hero img {
+        max-height: 520px;
+        object-fit: contain;
+        background: #eeece7;
+      }
+
+      .grid {
+        display: grid;
+        grid-template-columns: repeat(2,minmax(0,1fr));
+        gap: 18px;
+        margin-top: 22px;
+      }
+
+      .grid.three {
+        grid-template-columns: repeat(3,minmax(0,1fr));
+      }
+
+      .grid figure {
+        margin: 0;
+      }
+
+      .sources img {
+        height: 280px;
+        object-fit: contain;
+        background: #f0efeb;
+      }
+
+      .rectifications img {
+        max-height: 440px;
+        object-fit: contain;
+        background: #f0efeb;
+      }
+
+      .result img {
+        max-height: 650px;
+        object-fit: contain;
+        background: #eeece7;
+      }
+
+      .equation {
+        padding: 18px 22px;
+        margin: 22px 0;
+        background: #f0efeb;
+        border-left: 3px solid var(--accent);
+        font: 1.08rem/1.7 Georgia,serif;
+        overflow-x: auto;
+      }
+
+      .equation span {
+        display: block;
+        white-space: nowrap;
+      }
+
+      .note {
+        color: var(--muted);
+        font-size: .9rem;
+      }
+
+      .method {
+        max-width: 850px;
+        padding-left: 22px;
+      }
+
+      .method li {
+        padding: 5px 0;
+      }
+
+      .matrix {
+        white-space: pre;
+        font: .9rem/1.7 monospace;
+        background: #f0efeb;
+        padding: 18px;
+        overflow: auto;
+      }
+
+      .callout {
+        margin: 24px 0 0;
+        padding: 18px 22px;
+        border-left: 3px solid var(--accent);
+        background: #f4efe4;
+      }
+
+      .callout p {
+        margin: 0;
+      }
+
+      code {
+        font-size: .88em;
+      }
+
+      details {
+        margin-top: 22px;
+      }
+
+      summary {
+        color: var(--accent);
+        cursor: pointer;
+      }
+
+      footer {
+        padding-top: 30px;
+        color: var(--muted);
+        font-size: .86rem;
+        display: flex;
+        justify-content: space-between;
+        flex-wrap: wrap;
+        gap: 14px;
+      }
+
+      article+article {
+        margin-top: 44px;
+        padding-top: 12px;
+        border-top: 1px solid var(--line);
+      }
+
+      .skip {
+        position: absolute;
+        left: 16px;
+        top: -100px;
+        background: white;
+        padding: 10px;
+      }
+
+      .skip:focus {
+        top: 10px;
+      }
+
+      @media (max-width:650px) {
+        main {
+          padding: 28px 18px 44px;
+        }
+
+        header {
+          padding-top: 28px;
+        }
+
+        h2 {
+          font-size: 1.8rem;
+        }
+
+        section {
+          padding: 32px 0;
+        }
+
+        .grid,.grid.three {
+          grid-template-columns: 1fr;
+        }
+
+        .sources img,.sources svg {
+          height: auto;
+          max-height: 360px;
+        }
+
+        .rectifications {
+          grid-template-columns: repeat(2,minmax(0,1fr));
+        }
+
+        .rectifications figcaption {
+          padding: 10px;
+          font-size: .78rem;
+        }
+
+        nav ol {
+          gap: 10px 18px;
+        }
+
+        .equation {
+          font-size: 1rem;
+          padding: 14px;
+        }
+
+        .hero img {
+          max-height: 340px;
+        }
+
+      }
+
+      @media (prefers-reduced-motion:reduce) {
+        html {
+          scroll-behavior: auto;
+        }
+
+      }
+
+      @media print {
+        main {
+          max-width: none;
+          padding: 0;
+        }
+
+        body {
+          background: white;
+          font-size: 10pt;
+        }
+
+        .back,nav,.skip {
+          display: none;
+        }
+
+        header {
+          padding-top: 0;
+        }
+
+        h1 {
+          font-size: 34pt;
+        }
+
+        h2 {
+          font-size: 23pt;
+        }
+
+        section {
+          padding: 22px 0;
+        }
+
+        figure,.equation {
+          break-inside: avoid;
+        }
+
+        .grid.three {
+          grid-template-columns: repeat(3,minmax(0,1fr));
+        }
+
+        .result img {
+          max-height: 160mm;
+        }
+
+        a {
+          color: inherit;
+        }
+
+      }
+    </style>
+  </head>
+  <body>
+    <a class="skip" href="#capture">Skip to project content</a>
+    <main>
+      <a class="back" href="../index.html">← Back to all projects</a>
+
+      <header>
+        <p class="eyebrow">
+          CS 180 · Project 4A
+        </p>
+        <h1>
+          Image Warping
+          <br/>
+          & Mosaicing
+        </h1>
+        <p class="intro">
+          Recovering perspective, rectifying planar surfaces, and stitching overlapping photographs into a shared view.
+        </p>
+        <figure class="hero">
+          <a aria-label="Open full-size: Lower Sproul" href="assets/results/plaza_mosaic.png">
+            <img alt="Lower Sproul" decoding="async" height="1269" loading="lazy" src="assets/web/plaza_mosaic.webp" width="1800"/>
+          </a>
+          <figcaption>Lower Sproul</figcaption>
+        </figure>
+      </header>
+
+      <nav aria-label="Project sections">
+        <ol>
+          <li>
+            <a href="#capture">01 / Source photographs</a>
+          </li>
+          <li>
+            <a href="#homographies">02 / Homographies</a>
+          </li>
+          <li>
+            <a href="#rectification">03 / Rectification</a>
+          </li>
+          <li>
+            <a href="#mosaics">04 / Mosaics</a>
+          </li>
+          <li>
+            <a href="#takeaways">05 / Reflection</a>
+          </li>
+        </ol>
+      </nav>
+
+      <!-- A.1 - Source photographs -->
+      <section id="capture">
+        <p class="section-label">
+          01 / Shoot the pictures
+        </p>
+        <h2>Overlapping views of campus</h2>
+        <p>
+          The source photographs show The Gateway, Doe Library, and Lower Sproul.
+        </p>
+        <h3>The Gateway</h3>
+        <div class="grid sources">
+          <figure>
+            <a aria-label="Open full-size: Left" href="assets/IMG_4888.jpg">
+              <img alt="Left" decoding="async" height="1200" loading="lazy" src="assets/web/IMG_4888.webp" width="1600"/>
+            </a>
+            <figcaption>Left</figcaption>
+          </figure>
+          <figure>
+            <a aria-label="Open full-size: Right
+       " href="assets/IMG_4890.jpg">
+              <img alt="Right source" decoding="async" height="1200" loading="lazy" src="assets/web/IMG_4890.webp" width="1600"/>
+            </a>
+            <figcaption>Right</figcaption>
+          </figure>
+        </div>
+        <h3>Doe Library</h3>
+        <div class="grid sources">
+          <figure>
+            <a aria-label="Open full-size: Left" href="assets/IMG_4896.jpg">
+              <img alt="Left" decoding="async" height="1400" loading="lazy" src="assets/web/IMG_4896.webp" width="1050"/>
+            </a>
+            <figcaption>Left</figcaption>
+          </figure>
+          <figure>
+            <a aria-label="Open full-size: Right" href="assets/IMG_4897.jpg">
+              <img alt="Right" decoding="async" height="1400" loading="lazy" src="assets/web/IMG_4897.webp" width="1050"/>
+            </a>
+            <figcaption>Right</figcaption>
+          </figure>
+        </div>
+        <h3>Lower Sproul</h3>
+        <div class="grid sources">
+          <figure>
+            <a aria-label="Open full-size: Left" href="assets/IMG_4927.jpg">
+              <img alt="Left" decoding="async" height="1200" loading="lazy" src="assets/web/IMG_4927.webp" width="1600"/>
+            </a>
+            <figcaption>Left</figcaption>
+          </figure>
+          <figure>
+            <a aria-label="Open full-size: Right" href="assets/IMG_4929.jpg">
+              <img alt="Right" decoding="async" height="1200" loading="lazy" src="assets/web/IMG_4929.webp" width="1600"/>
+            </a>
+            <figcaption>Right</figcaption>
+          </figure>
+        </div>
+      </section>
+
+      <!-- A.2 - Homography estimation -->
+      <section id="homographies">
+        <p class="section-label">
+          02 / Recover homographies
+        </p>
+        <h2>One plane, two perspectives</h2>
+        <p>
+          A homography maps a point in one view to its corresponding point in another. The 3 × 3 matrix has eight free parameters after fixing its last entry to 1. At least four point pairs in a non-degenerate configuration are needed; additional pairs form an overdetermined system.
+        </p>
+        <div aria-label="Homography mapping" class="equation">
+          <span>[u, v, w]ᵀ = H [x, y, 1]ᵀ</span>
+          <span>x′ = u / w y′ = v / w</span>
+        </div>
+        <p>
+          For each correspondence,
+          <code>
+            computeH
+          </code>
+          adds two equations to
+          <code>
+            A h = b
+          </code>
+          and solves with
+          <code>
+            numpy.linalg.lstsq
+          </code>
+          . This minimizes the algebraic residual across the input point pairs.
+        </p>
+        <div class="equation">
+          <span>[x, y, 1, 0, 0, 0, −xx′, −yx′] h = x′</span>
+          <span>[0, 0, 0, x, y, 1, −xy′, −yy′] h = y′</span>
+        </div>
+        <h3>Inverse warping</h3>
+        <p>
+          The warp first transforms the image corners to determine the output bounds. It then visits every destination pixel, adds the canvas origin offset, and applies H⁻¹ to find its source coordinate. Sampling the source this way avoids the holes that forward pixel mapping can leave behind.
+        </p>
+        <h3>Correspondences and recovered matrices</h3>
+        <p>
+          Matching colors and numbers show corresponding locations in the two images. Each matrix maps the left image into the right image’s coordinates at the 1200-pixel working scale, with h₃₃ = 1.
+        </p>
+
+        <article>
+          <h3>The Gateway</h3>
+          <figure class="correspondences">
+            <svg aria-label="Eight numbered landmark correspondences between the left and right images" role="img" viewbox="0 0 1000 400.00" xmlns="http://www.w3.org/2000/svg">
+              <title>The Gateway: corresponding landmarks</title>
+              <rect fill="#202124" height="100%" width="1000">
+              </rect>
+              <image height="360.00" href="assets/web/IMG_4888.webp" width="480" x="0" y="28"/>
+              <text fill="white" font-family="Arial" font-size="14" x="12" y="19">Left</text>
+              <image height="360.00" href="assets/web/IMG_4890.webp" width="480" x="520" y="28"/>
+              <text fill="white" font-family="Arial" font-size="14" x="532" y="19">Right</text>
+              <line opacity=".35" stroke="#ffe000" stroke-width="1" x1="168.91" x2="583.89" y1="159.30" y2="139.56">
+              </line>
+              <circle cx="168.91" cy="159.30" fill="#ffe000" r="4" stroke="#111" stroke-width="1.5">
+              </circle>
+              <text fill="#ffe000" font-family="Arial" font-size="16" font-weight="bold" paint-order="stroke" stroke="#111" stroke-width="3" x="175.91" y="152.30">1</text>
+              <circle cx="583.89" cy="139.56" fill="#ffe000" r="4" stroke="#111" stroke-width="1.5">
+              </circle>
+              <text fill="#ffe000" font-family="Arial" font-size="16" font-weight="bold" paint-order="stroke" stroke="#111" stroke-width="3" x="590.89" y="132.56">1</text>
+              <line opacity=".35" stroke="#00e5ff" stroke-width="1" x1="173.64" x2="586.35" y1="227.34" y2="215.43">
+              </line>
+              <circle cx="173.64" cy="227.34" fill="#00e5ff" r="4" stroke="#111" stroke-width="1.5">
+              </circle>
+              <text fill="#00e5ff" font-family="Arial" font-size="16" font-weight="bold" paint-order="stroke" stroke="#111" stroke-width="3" x="180.64" y="220.34">2</text>
+              <circle cx="586.35" cy="215.43" fill="#00e5ff" r="4" stroke="#111" stroke-width="1.5">
+              </circle>
+              <text fill="#00e5ff" font-family="Arial" font-size="16" font-weight="bold" paint-order="stroke" stroke="#111" stroke-width="3" x="593.35" y="208.43">2</text>
+              <line opacity=".35" stroke="#ff628c" stroke-width="1" x1="254.35" x2="681.41" y1="169.06" y2="157.58">
+              </line>
+              <circle cx="254.35" cy="169.06" fill="#ff628c" r="4" stroke="#111" stroke-width="1.5">
+              </circle>
+              <text fill="#ff628c" font-family="Arial" font-size="16" font-weight="bold" paint-order="stroke" stroke="#111" stroke-width="3" x="261.35" y="162.06">3</text>
+              <circle cx="681.41" cy="157.58" fill="#ff628c" r="4" stroke="#111" stroke-width="1.5">
+              </circle>
+              <text fill="#ff628c" font-family="Arial" font-size="16" font-weight="bold" paint-order="stroke" stroke="#111" stroke-width="3" x="688.41" y="150.58">3</text>
+              <line opacity=".35" stroke="#80ff6b" stroke-width="1" x1="339.16" x2="762.86" y1="251.35" y2="244.18">
+              </line>
+              <circle cx="339.16" cy="251.35" fill="#80ff6b" r="4" stroke="#111" stroke-width="1.5">
+              </circle>
+              <text fill="#80ff6b" font-family="Arial" font-size="16" font-weight="bold" paint-order="stroke" stroke="#111" stroke-width="3" x="346.16" y="244.35">4</text>
+              <circle cx="762.86" cy="244.18" fill="#80ff6b" r="4" stroke="#111" stroke-width="1.5">
+              </circle>
+              <text fill="#80ff6b" font-family="Arial" font-size="16" font-weight="bold" paint-order="stroke" stroke="#111" stroke-width="3" x="769.86" y="237.18">4</text>
+              <line opacity=".35" stroke="#ff9900" stroke-width="1" x1="167.97" x2="578.40" y1="254.09" y2="244.63">
+              </line>
+              <circle cx="167.97" cy="254.09" fill="#ff9900" r="4" stroke="#111" stroke-width="1.5">
+              </circle>
+              <text fill="#ff9900" font-family="Arial" font-size="16" font-weight="bold" paint-order="stroke" stroke="#111" stroke-width="3" x="174.97" y="247.09">5</text>
+              <circle cx="578.40" cy="244.63" fill="#ff9900" r="4" stroke="#111" stroke-width="1.5">
+              </circle>
+              <text fill="#ff9900" font-family="Arial" font-size="16" font-weight="bold" paint-order="stroke" stroke="#111" stroke-width="3" x="585.40" y="237.63">5</text>
+              <line opacity=".35" stroke="#c6a0ff" stroke-width="1" x1="432.48" x2="849.28" y1="139.48" y2="143.10">
+              </line>
+              <circle cx="432.48" cy="139.48" fill="#c6a0ff" r="4" stroke="#111" stroke-width="1.5">
+              </circle>
+              <text fill="#c6a0ff" font-family="Arial" font-size="16" font-weight="bold" paint-order="stroke" stroke="#111" stroke-width="3" x="439.48" y="132.48">6</text>
+              <circle cx="849.28" cy="143.10" fill="#c6a0ff" r="4" stroke="#111" stroke-width="1.5">
+              </circle>
+              <text fill="#c6a0ff" font-family="Arial" font-size="16" font-weight="bold" paint-order="stroke" stroke="#111" stroke-width="3" x="856.28" y="136.10">6</text>
+              <line opacity=".35" stroke="#ffffff" stroke-width="1" x1="150.10" x2="563.09" y1="109.18" y2="81.54">
+              </line>
+              <circle cx="150.10" cy="109.18" fill="#ffffff" r="4" stroke="#111" stroke-width="1.5">
+              </circle>
+              <text fill="#ffffff" font-family="Arial" font-size="16" font-weight="bold" paint-order="stroke" stroke="#111" stroke-width="3" x="157.10" y="102.18">7</text>
+              <circle cx="563.09" cy="81.54" fill="#ffffff" r="4" stroke="#111" stroke-width="1.5">
+              </circle>
+              <text fill="#ffffff" font-family="Arial" font-size="16" font-weight="bold" paint-order="stroke" stroke="#111" stroke-width="3" x="570.09" y="74.54">7</text>
+              <line opacity=".35" stroke="#50ffd0" stroke-width="1" x1="364.39" x2="789.21" y1="164.58" y2="161.97">
+              </line>
+              <circle cx="364.39" cy="164.58" fill="#50ffd0" r="4" stroke="#111" stroke-width="1.5">
+              </circle>
+              <text fill="#50ffd0" font-family="Arial" font-size="16" font-weight="bold" paint-order="stroke" stroke="#111" stroke-width="3" x="371.39" y="157.58">8</text>
+              <circle cx="789.21" cy="161.97" fill="#50ffd0" r="4" stroke="#111" stroke-width="1.5">
+              </circle>
+              <text fill="#50ffd0" font-family="Arial" font-size="16" font-weight="bold" paint-order="stroke" stroke="#111" stroke-width="3" x="796.21" y="154.97">8</text>
+            </svg>
+          </figure>
+          <pre aria-label="Recovered homography matrix" class="matrix">H = [  1.4908180  -0.0457156  -427.1008497
        0.2269261   1.3043738  -197.9305051
-       0.0003892   0.0000118   1.0000000 ]</pre></article><article><h3>Doe Library</h3><figure class="correspondences"><svg viewBox="0 0 1000 680.00" role="img" aria-label="Eight numbered landmark correspondences between the left and right images" xmlns="http://www.w3.org/2000/svg"><title>Doe Library: corresponding landmarks</title><rect width="1000" height="100%" fill="#202124"/><image href="assets/web/IMG_4896.webp" x="0" y="28" width="480" height="640.00"/><text x="12" y="19" fill="white" font-family="Arial" font-size="14">Left</text><image href="assets/web/IMG_4897.webp" x="520" y="28" width="480" height="640.00"/><text x="532" y="19" fill="white" font-family="Arial" font-size="14">Right</text><line x1="186.64" y1="290.82" x2="570.36" y2="269.10" stroke="#ffe000" stroke-width="1" opacity=".35"/><circle cx="186.64" cy="290.82" r="4" fill="#ffe000" stroke="#111" stroke-width="1.5"/><text x="193.64" y="283.82" fill="#ffe000" stroke="#111" stroke-width="3" paint-order="stroke" font-family="Arial" font-weight="bold" font-size="16">1</text><circle cx="570.36" cy="269.10" r="4" fill="#ffe000" stroke="#111" stroke-width="1.5"/><text x="577.36" y="262.10" fill="#ffe000" stroke="#111" stroke-width="3" paint-order="stroke" font-family="Arial" font-weight="bold" font-size="16">1</text><line x1="222.39" y1="281.28" x2="611.52" y2="263.08" stroke="#00e5ff" stroke-width="1" opacity=".35"/><circle cx="222.39" cy="281.28" r="4" fill="#00e5ff" stroke="#111" stroke-width="1.5"/><text x="229.39" y="274.28" fill="#00e5ff" stroke="#111" stroke-width="3" paint-order="stroke" font-family="Arial" font-weight="bold" font-size="16">2</text><circle cx="611.52" cy="263.08" r="4" fill="#00e5ff" stroke="#111" stroke-width="1.5"/><text x="618.52" y="256.08" fill="#00e5ff" stroke="#111" stroke-width="3" paint-order="stroke" font-family="Arial" font-weight="bold" font-size="16">2</text><line x1="181.38" y1="363.05" x2="558.64" y2="346.75" stroke="#ff628c" stroke-width="1" opacity=".35"/><circle cx="181.38" cy="363.05" r="4" fill="#ff628c" stroke="#111" stroke-width="1.5"/><text x="188.38" y="356.05" fill="#ff628c" stroke="#111" stroke-width="3" paint-order="stroke" font-family="Arial" font-weight="bold" font-size="16">3</text><circle cx="558.64" cy="346.75" r="4" fill="#ff628c" stroke="#111" stroke-width="1.5"/><text x="565.64" y="339.75" fill="#ff628c" stroke="#111" stroke-width="3" paint-order="stroke" font-family="Arial" font-weight="bold" font-size="16">3</text><line x1="225.33" y1="356.50" x2="609.26" y2="343.00" stroke="#80ff6b" stroke-width="1" opacity=".35"/><circle cx="225.33" cy="356.50" r="4" fill="#80ff6b" stroke="#111" stroke-width="1.5"/><text x="232.33" y="349.50" fill="#80ff6b" stroke="#111" stroke-width="3" paint-order="stroke" font-family="Arial" font-weight="bold" font-size="16">4</text><circle cx="609.26" cy="343.00" r="4" fill="#80ff6b" stroke="#111" stroke-width="1.5"/><text x="616.26" y="336.00" fill="#80ff6b" stroke="#111" stroke-width="3" paint-order="stroke" font-family="Arial" font-weight="bold" font-size="16">4</text><line x1="301.96" y1="167.57" x2="703.06" y2="159.05" stroke="#ff9900" stroke-width="1" opacity=".35"/><circle cx="301.96" cy="167.57" r="4" fill="#ff9900" stroke="#111" stroke-width="1.5"/><text x="308.96" y="160.57" fill="#ff9900" stroke="#111" stroke-width="3" paint-order="stroke" font-family="Arial" font-weight="bold" font-size="16">5</text><circle cx="703.06" cy="159.05" r="4" fill="#ff9900" stroke="#111" stroke-width="1.5"/><text x="710.06" y="152.05" fill="#ff9900" stroke="#111" stroke-width="3" paint-order="stroke" font-family="Arial" font-weight="bold" font-size="16">5</text><line x1="320.04" y1="162.65" x2="721.25" y2="157.33" stroke="#c6a0ff" stroke-width="1" opacity=".35"/><circle cx="320.04" cy="162.65" r="4" fill="#c6a0ff" stroke="#111" stroke-width="1.5"/><text x="327.04" y="155.65" fill="#c6a0ff" stroke="#111" stroke-width="3" paint-order="stroke" font-family="Arial" font-weight="bold" font-size="16">6</text><circle cx="721.25" cy="157.33" r="4" fill="#c6a0ff" stroke="#111" stroke-width="1.5"/><text x="728.25" y="150.33" fill="#c6a0ff" stroke="#111" stroke-width="3" paint-order="stroke" font-family="Arial" font-weight="bold" font-size="16">6</text><line x1="385.43" y1="249.65" x2="777.07" y2="252.41" stroke="#ffffff" stroke-width="1" opacity=".35"/><circle cx="385.43" cy="249.65" r="4" fill="#ffffff" stroke="#111" stroke-width="1.5"/><text x="392.43" y="242.65" fill="#ffffff" stroke="#111" stroke-width="3" paint-order="stroke" font-family="Arial" font-weight="bold" font-size="16">7</text><circle cx="777.07" cy="252.41" r="4" fill="#ffffff" stroke="#111" stroke-width="1.5"/><text x="784.07" y="245.41" fill="#ffffff" stroke="#111" stroke-width="3" paint-order="stroke" font-family="Arial" font-weight="bold" font-size="16">7</text><line x1="411.90" y1="295.83" x2="797.54" y2="298.97" stroke="#50ffd0" stroke-width="1" opacity=".35"/><circle cx="411.90" cy="295.83" r="4" fill="#50ffd0" stroke="#111" stroke-width="1.5"/><text x="418.90" y="288.83" fill="#50ffd0" stroke="#111" stroke-width="3" paint-order="stroke" font-family="Arial" font-weight="bold" font-size="16">8</text><circle cx="797.54" cy="298.97" r="4" fill="#50ffd0" stroke="#111" stroke-width="1.5"/><text x="804.54" y="291.97" fill="#50ffd0" stroke="#111" stroke-width="3" paint-order="stroke" font-family="Arial" font-weight="bold" font-size="16">8</text></svg></figure><pre class="matrix" aria-label="Recovered homography matrix">H = [  1.3557294  -0.0841337  -325.8783507
+       0.0003892   0.0000118   1.0000000 ]</pre>
+        </article>
+
+        <article>
+          <h3>Doe Library</h3>
+          <figure class="correspondences">
+            <svg aria-label="Eight numbered landmark correspondences between the left and right images" role="img" viewbox="0 0 1000 680.00" xmlns="http://www.w3.org/2000/svg">
+              <title>Doe Library: corresponding landmarks</title>
+              <rect fill="#202124" height="100%" width="1000">
+              </rect>
+              <image height="640.00" href="assets/web/IMG_4896.webp" width="480" x="0" y="28"/>
+              <text fill="white" font-family="Arial" font-size="14" x="12" y="19">Left</text>
+              <image height="640.00" href="assets/web/IMG_4897.webp" width="480" x="520" y="28"/>
+              <text fill="white" font-family="Arial" font-size="14" x="532" y="19">Right</text>
+              <line opacity=".35" stroke="#ffe000" stroke-width="1" x1="186.64" x2="570.36" y1="290.82" y2="269.10">
+              </line>
+              <circle cx="186.64" cy="290.82" fill="#ffe000" r="4" stroke="#111" stroke-width="1.5">
+              </circle>
+              <text fill="#ffe000" font-family="Arial" font-size="16" font-weight="bold" paint-order="stroke" stroke="#111" stroke-width="3" x="193.64" y="283.82">1</text>
+              <circle cx="570.36" cy="269.10" fill="#ffe000" r="4" stroke="#111" stroke-width="1.5">
+              </circle>
+              <text fill="#ffe000" font-family="Arial" font-size="16" font-weight="bold" paint-order="stroke" stroke="#111" stroke-width="3" x="577.36" y="262.10">1</text>
+              <line opacity=".35" stroke="#00e5ff" stroke-width="1" x1="222.39" x2="611.52" y1="281.28" y2="263.08">
+              </line>
+              <circle cx="222.39" cy="281.28" fill="#00e5ff" r="4" stroke="#111" stroke-width="1.5">
+              </circle>
+              <text fill="#00e5ff" font-family="Arial" font-size="16" font-weight="bold" paint-order="stroke" stroke="#111" stroke-width="3" x="229.39" y="274.28">2</text>
+              <circle cx="611.52" cy="263.08" fill="#00e5ff" r="4" stroke="#111" stroke-width="1.5">
+              </circle>
+              <text fill="#00e5ff" font-family="Arial" font-size="16" font-weight="bold" paint-order="stroke" stroke="#111" stroke-width="3" x="618.52" y="256.08">2</text>
+              <line opacity=".35" stroke="#ff628c" stroke-width="1" x1="181.38" x2="558.64" y1="363.05" y2="346.75">
+              </line>
+              <circle cx="181.38" cy="363.05" fill="#ff628c" r="4" stroke="#111" stroke-width="1.5">
+              </circle>
+              <text fill="#ff628c" font-family="Arial" font-size="16" font-weight="bold" paint-order="stroke" stroke="#111" stroke-width="3" x="188.38" y="356.05">3</text>
+              <circle cx="558.64" cy="346.75" fill="#ff628c" r="4" stroke="#111" stroke-width="1.5">
+              </circle>
+              <text fill="#ff628c" font-family="Arial" font-size="16" font-weight="bold" paint-order="stroke" stroke="#111" stroke-width="3" x="565.64" y="339.75">3</text>
+              <line opacity=".35" stroke="#80ff6b" stroke-width="1" x1="225.33" x2="609.26" y1="356.50" y2="343.00">
+              </line>
+              <circle cx="225.33" cy="356.50" fill="#80ff6b" r="4" stroke="#111" stroke-width="1.5">
+              </circle>
+              <text fill="#80ff6b" font-family="Arial" font-size="16" font-weight="bold" paint-order="stroke" stroke="#111" stroke-width="3" x="232.33" y="349.50">4</text>
+              <circle cx="609.26" cy="343.00" fill="#80ff6b" r="4" stroke="#111" stroke-width="1.5">
+              </circle>
+              <text fill="#80ff6b" font-family="Arial" font-size="16" font-weight="bold" paint-order="stroke" stroke="#111" stroke-width="3" x="616.26" y="336.00">4</text>
+              <line opacity=".35" stroke="#ff9900" stroke-width="1" x1="301.96" x2="703.06" y1="167.57" y2="159.05">
+              </line>
+              <circle cx="301.96" cy="167.57" fill="#ff9900" r="4" stroke="#111" stroke-width="1.5">
+              </circle>
+              <text fill="#ff9900" font-family="Arial" font-size="16" font-weight="bold" paint-order="stroke" stroke="#111" stroke-width="3" x="308.96" y="160.57">5</text>
+              <circle cx="703.06" cy="159.05" fill="#ff9900" r="4" stroke="#111" stroke-width="1.5">
+              </circle>
+              <text fill="#ff9900" font-family="Arial" font-size="16" font-weight="bold" paint-order="stroke" stroke="#111" stroke-width="3" x="710.06" y="152.05">5</text>
+              <line opacity=".35" stroke="#c6a0ff" stroke-width="1" x1="320.04" x2="721.25" y1="162.65" y2="157.33">
+              </line>
+              <circle cx="320.04" cy="162.65" fill="#c6a0ff" r="4" stroke="#111" stroke-width="1.5">
+              </circle>
+              <text fill="#c6a0ff" font-family="Arial" font-size="16" font-weight="bold" paint-order="stroke" stroke="#111" stroke-width="3" x="327.04" y="155.65">6</text>
+              <circle cx="721.25" cy="157.33" fill="#c6a0ff" r="4" stroke="#111" stroke-width="1.5">
+              </circle>
+              <text fill="#c6a0ff" font-family="Arial" font-size="16" font-weight="bold" paint-order="stroke" stroke="#111" stroke-width="3" x="728.25" y="150.33">6</text>
+              <line opacity=".35" stroke="#ffffff" stroke-width="1" x1="385.43" x2="777.07" y1="249.65" y2="252.41">
+              </line>
+              <circle cx="385.43" cy="249.65" fill="#ffffff" r="4" stroke="#111" stroke-width="1.5">
+              </circle>
+              <text fill="#ffffff" font-family="Arial" font-size="16" font-weight="bold" paint-order="stroke" stroke="#111" stroke-width="3" x="392.43" y="242.65">7</text>
+              <circle cx="777.07" cy="252.41" fill="#ffffff" r="4" stroke="#111" stroke-width="1.5">
+              </circle>
+              <text fill="#ffffff" font-family="Arial" font-size="16" font-weight="bold" paint-order="stroke" stroke="#111" stroke-width="3" x="784.07" y="245.41">7</text>
+              <line opacity=".35" stroke="#50ffd0" stroke-width="1" x1="411.90" x2="797.54" y1="295.83" y2="298.97">
+              </line>
+              <circle cx="411.90" cy="295.83" fill="#50ffd0" r="4" stroke="#111" stroke-width="1.5">
+              </circle>
+              <text fill="#50ffd0" font-family="Arial" font-size="16" font-weight="bold" paint-order="stroke" stroke="#111" stroke-width="3" x="418.90" y="288.83">8</text>
+              <circle cx="797.54" cy="298.97" fill="#50ffd0" r="4" stroke="#111" stroke-width="1.5">
+              </circle>
+              <text fill="#50ffd0" font-family="Arial" font-size="16" font-weight="bold" paint-order="stroke" stroke="#111" stroke-width="3" x="804.54" y="291.97">8</text>
+            </svg>
+          </figure>
+          <pre aria-label="Recovered homography matrix" class="matrix">H = [  1.3557294  -0.0841337  -325.8783507
        0.3184536   1.2274743  -201.2253600
-       0.0003903   0.0000041   1.0000000 ]</pre></article><article><h3>Lower Sproul</h3><figure class="correspondences"><svg viewBox="0 0 1000 400.00" role="img" aria-label="Eight numbered landmark correspondences between the left and right images" xmlns="http://www.w3.org/2000/svg"><title>Lower Sproul: corresponding landmarks</title><rect width="1000" height="100%" fill="#202124"/><image href="assets/web/IMG_4927.webp" x="0" y="28" width="480" height="360.00"/><text x="12" y="19" fill="white" font-family="Arial" font-size="14">Left</text><image href="assets/web/IMG_4929.webp" x="520" y="28" width="480" height="360.00"/><text x="532" y="19" fill="white" font-family="Arial" font-size="14">Right</text><line x1="200.81" y1="106.06" x2="570.97" y2="78.19" stroke="#ffe000" stroke-width="1" opacity=".35"/><circle cx="200.81" cy="106.06" r="4" fill="#ffe000" stroke="#111" stroke-width="1.5"/><text x="207.81" y="99.06" fill="#ffe000" stroke="#111" stroke-width="3" paint-order="stroke" font-family="Arial" font-weight="bold" font-size="16">1</text><circle cx="570.97" cy="78.19" r="4" fill="#ffe000" stroke="#111" stroke-width="1.5"/><text x="577.97" y="71.19" fill="#ffe000" stroke="#111" stroke-width="3" paint-order="stroke" font-family="Arial" font-weight="bold" font-size="16">1</text><line x1="230.39" y1="163.56" x2="608.56" y2="146.14" stroke="#00e5ff" stroke-width="1" opacity=".35"/><circle cx="230.39" cy="163.56" r="4" fill="#00e5ff" stroke="#111" stroke-width="1.5"/><text x="237.39" y="156.56" fill="#00e5ff" stroke="#111" stroke-width="3" paint-order="stroke" font-family="Arial" font-weight="bold" font-size="16">2</text><circle cx="608.56" cy="146.14" r="4" fill="#00e5ff" stroke="#111" stroke-width="1.5"/><text x="615.56" y="139.14" fill="#00e5ff" stroke="#111" stroke-width="3" paint-order="stroke" font-family="Arial" font-weight="bold" font-size="16">2</text><line x1="278.59" y1="106.29" x2="663.60" y2="90.13" stroke="#ff628c" stroke-width="1" opacity=".35"/><circle cx="278.59" cy="106.29" r="4" fill="#ff628c" stroke="#111" stroke-width="1.5"/><text x="285.59" y="99.29" fill="#ff628c" stroke="#111" stroke-width="3" paint-order="stroke" font-family="Arial" font-weight="bold" font-size="16">3</text><circle cx="663.60" cy="90.13" r="4" fill="#ff628c" stroke="#111" stroke-width="1.5"/><text x="670.60" y="83.13" fill="#ff628c" stroke="#111" stroke-width="3" paint-order="stroke" font-family="Arial" font-weight="bold" font-size="16">3</text><line x1="347.75" y1="213.90" x2="732.23" y2="203.06" stroke="#80ff6b" stroke-width="1" opacity=".35"/><circle cx="347.75" cy="213.90" r="4" fill="#80ff6b" stroke="#111" stroke-width="1.5"/><text x="354.75" y="206.90" fill="#80ff6b" stroke="#111" stroke-width="3" paint-order="stroke" font-family="Arial" font-weight="bold" font-size="16">4</text><circle cx="732.23" cy="203.06" r="4" fill="#80ff6b" stroke="#111" stroke-width="1.5"/><text x="739.23" y="196.06" fill="#80ff6b" stroke="#111" stroke-width="3" paint-order="stroke" font-family="Arial" font-weight="bold" font-size="16">4</text><line x1="297.04" y1="211.35" x2="683.27" y2="199.97" stroke="#ff9900" stroke-width="1" opacity=".35"/><circle cx="297.04" cy="211.35" r="4" fill="#ff9900" stroke="#111" stroke-width="1.5"/><text x="304.04" y="204.35" fill="#ff9900" stroke="#111" stroke-width="3" paint-order="stroke" font-family="Arial" font-weight="bold" font-size="16">5</text><circle cx="683.27" cy="199.97" r="4" fill="#ff9900" stroke="#111" stroke-width="1.5"/><text x="690.27" y="192.97" fill="#ff9900" stroke="#111" stroke-width="3" paint-order="stroke" font-family="Arial" font-weight="bold" font-size="16">5</text><line x1="438.41" y1="205.28" x2="807.38" y2="196.07" stroke="#c6a0ff" stroke-width="1" opacity=".35"/><circle cx="438.41" cy="205.28" r="4" fill="#c6a0ff" stroke="#111" stroke-width="1.5"/><text x="445.41" y="198.28" fill="#c6a0ff" stroke="#111" stroke-width="3" paint-order="stroke" font-family="Arial" font-weight="bold" font-size="16">6</text><circle cx="807.38" cy="196.07" r="4" fill="#c6a0ff" stroke="#111" stroke-width="1.5"/><text x="814.38" y="189.07" fill="#c6a0ff" stroke="#111" stroke-width="3" paint-order="stroke" font-family="Arial" font-weight="bold" font-size="16">6</text><line x1="345.94" y1="160.35" x2="730.85" y2="151.59" stroke="#ffffff" stroke-width="1" opacity=".35"/><circle cx="345.94" cy="160.35" r="4" fill="#ffffff" stroke="#111" stroke-width="1.5"/><text x="352.94" y="153.35" fill="#ffffff" stroke="#111" stroke-width="3" paint-order="stroke" font-family="Arial" font-weight="bold" font-size="16">7</text><circle cx="730.85" cy="151.59" r="4" fill="#ffffff" stroke="#111" stroke-width="1.5"/><text x="737.85" y="144.59" fill="#ffffff" stroke="#111" stroke-width="3" paint-order="stroke" font-family="Arial" font-weight="bold" font-size="16">7</text><line x1="397.44" y1="248.64" x2="774.64" y2="234.70" stroke="#50ffd0" stroke-width="1" opacity=".35"/><circle cx="397.44" cy="248.64" r="4" fill="#50ffd0" stroke="#111" stroke-width="1.5"/><text x="404.44" y="241.64" fill="#50ffd0" stroke="#111" stroke-width="3" paint-order="stroke" font-family="Arial" font-weight="bold" font-size="16">8</text><circle cx="774.64" cy="234.70" r="4" fill="#50ffd0" stroke="#111" stroke-width="1.5"/><text x="781.64" y="227.70" fill="#50ffd0" stroke="#111" stroke-width="3" paint-order="stroke" font-family="Arial" font-weight="bold" font-size="16">8</text></svg></figure><pre class="matrix" aria-label="Recovered homography matrix">H = [  1.8914893   0.0105413  -776.7401629
+       0.0003903   0.0000041   1.0000000 ]</pre>
+        </article>
+
+        <article>
+          <h3>Lower Sproul</h3>
+          <figure class="correspondences">
+            <svg aria-label="Eight numbered landmark correspondences between the left and right images" role="img" viewbox="0 0 1000 400.00" xmlns="http://www.w3.org/2000/svg">
+              <title>Lower Sproul: corresponding landmarks</title>
+              <rect fill="#202124" height="100%" width="1000">
+              </rect>
+              <image height="360.00" href="assets/web/IMG_4927.webp" width="480" x="0" y="28"/>
+              <text fill="white" font-family="Arial" font-size="14" x="12" y="19">Left</text>
+              <image height="360.00" href="assets/web/IMG_4929.webp" width="480" x="520" y="28"/>
+              <text fill="white" font-family="Arial" font-size="14" x="532" y="19">Right</text>
+              <line opacity=".35" stroke="#ffe000" stroke-width="1" x1="200.81" x2="570.97" y1="106.06" y2="78.19">
+              </line>
+              <circle cx="200.81" cy="106.06" fill="#ffe000" r="4" stroke="#111" stroke-width="1.5">
+              </circle>
+              <text fill="#ffe000" font-family="Arial" font-size="16" font-weight="bold" paint-order="stroke" stroke="#111" stroke-width="3" x="207.81" y="99.06">1</text>
+              <circle cx="570.97" cy="78.19" fill="#ffe000" r="4" stroke="#111" stroke-width="1.5">
+              </circle>
+              <text fill="#ffe000" font-family="Arial" font-size="16" font-weight="bold" paint-order="stroke" stroke="#111" stroke-width="3" x="577.97" y="71.19">1</text>
+              <line opacity=".35" stroke="#00e5ff" stroke-width="1" x1="230.39" x2="608.56" y1="163.56" y2="146.14">
+              </line>
+              <circle cx="230.39" cy="163.56" fill="#00e5ff" r="4" stroke="#111" stroke-width="1.5">
+              </circle>
+              <text fill="#00e5ff" font-family="Arial" font-size="16" font-weight="bold" paint-order="stroke" stroke="#111" stroke-width="3" x="237.39" y="156.56">2</text>
+              <circle cx="608.56" cy="146.14" fill="#00e5ff" r="4" stroke="#111" stroke-width="1.5">
+              </circle>
+              <text fill="#00e5ff" font-family="Arial" font-size="16" font-weight="bold" paint-order="stroke" stroke="#111" stroke-width="3" x="615.56" y="139.14">2</text>
+              <line opacity=".35" stroke="#ff628c" stroke-width="1" x1="278.59" x2="663.60" y1="106.29" y2="90.13">
+              </line>
+              <circle cx="278.59" cy="106.29" fill="#ff628c" r="4" stroke="#111" stroke-width="1.5">
+              </circle>
+              <text fill="#ff628c" font-family="Arial" font-size="16" font-weight="bold" paint-order="stroke" stroke="#111" stroke-width="3" x="285.59" y="99.29">3</text>
+              <circle cx="663.60" cy="90.13" fill="#ff628c" r="4" stroke="#111" stroke-width="1.5">
+              </circle>
+              <text fill="#ff628c" font-family="Arial" font-size="16" font-weight="bold" paint-order="stroke" stroke="#111" stroke-width="3" x="670.60" y="83.13">3</text>
+              <line opacity=".35" stroke="#80ff6b" stroke-width="1" x1="347.75" x2="732.23" y1="213.90" y2="203.06">
+              </line>
+              <circle cx="347.75" cy="213.90" fill="#80ff6b" r="4" stroke="#111" stroke-width="1.5">
+              </circle>
+              <text fill="#80ff6b" font-family="Arial" font-size="16" font-weight="bold" paint-order="stroke" stroke="#111" stroke-width="3" x="354.75" y="206.90">4</text>
+              <circle cx="732.23" cy="203.06" fill="#80ff6b" r="4" stroke="#111" stroke-width="1.5">
+              </circle>
+              <text fill="#80ff6b" font-family="Arial" font-size="16" font-weight="bold" paint-order="stroke" stroke="#111" stroke-width="3" x="739.23" y="196.06">4</text>
+              <line opacity=".35" stroke="#ff9900" stroke-width="1" x1="297.04" x2="683.27" y1="211.35" y2="199.97">
+              </line>
+              <circle cx="297.04" cy="211.35" fill="#ff9900" r="4" stroke="#111" stroke-width="1.5">
+              </circle>
+              <text fill="#ff9900" font-family="Arial" font-size="16" font-weight="bold" paint-order="stroke" stroke="#111" stroke-width="3" x="304.04" y="204.35">5</text>
+              <circle cx="683.27" cy="199.97" fill="#ff9900" r="4" stroke="#111" stroke-width="1.5">
+              </circle>
+              <text fill="#ff9900" font-family="Arial" font-size="16" font-weight="bold" paint-order="stroke" stroke="#111" stroke-width="3" x="690.27" y="192.97">5</text>
+              <line opacity=".35" stroke="#c6a0ff" stroke-width="1" x1="438.41" x2="807.38" y1="205.28" y2="196.07">
+              </line>
+              <circle cx="438.41" cy="205.28" fill="#c6a0ff" r="4" stroke="#111" stroke-width="1.5">
+              </circle>
+              <text fill="#c6a0ff" font-family="Arial" font-size="16" font-weight="bold" paint-order="stroke" stroke="#111" stroke-width="3" x="445.41" y="198.28">6</text>
+              <circle cx="807.38" cy="196.07" fill="#c6a0ff" r="4" stroke="#111" stroke-width="1.5">
+              </circle>
+              <text fill="#c6a0ff" font-family="Arial" font-size="16" font-weight="bold" paint-order="stroke" stroke="#111" stroke-width="3" x="814.38" y="189.07">6</text>
+              <line opacity=".35" stroke="#ffffff" stroke-width="1" x1="345.94" x2="730.85" y1="160.35" y2="151.59">
+              </line>
+              <circle cx="345.94" cy="160.35" fill="#ffffff" r="4" stroke="#111" stroke-width="1.5">
+              </circle>
+              <text fill="#ffffff" font-family="Arial" font-size="16" font-weight="bold" paint-order="stroke" stroke="#111" stroke-width="3" x="352.94" y="153.35">7</text>
+              <circle cx="730.85" cy="151.59" fill="#ffffff" r="4" stroke="#111" stroke-width="1.5">
+              </circle>
+              <text fill="#ffffff" font-family="Arial" font-size="16" font-weight="bold" paint-order="stroke" stroke="#111" stroke-width="3" x="737.85" y="144.59">7</text>
+              <line opacity=".35" stroke="#50ffd0" stroke-width="1" x1="397.44" x2="774.64" y1="248.64" y2="234.70">
+              </line>
+              <circle cx="397.44" cy="248.64" fill="#50ffd0" r="4" stroke="#111" stroke-width="1.5">
+              </circle>
+              <text fill="#50ffd0" font-family="Arial" font-size="16" font-weight="bold" paint-order="stroke" stroke="#111" stroke-width="3" x="404.44" y="241.64">8</text>
+              <circle cx="774.64" cy="234.70" fill="#50ffd0" r="4" stroke="#111" stroke-width="1.5">
+              </circle>
+              <text fill="#50ffd0" font-family="Arial" font-size="16" font-weight="bold" paint-order="stroke" stroke="#111" stroke-width="3" x="781.64" y="227.70">8</text>
+            </svg>
+          </figure>
+          <pre aria-label="Recovered homography matrix" class="matrix">H = [  1.8914893   0.0105413  -776.7401629
        0.3248311   1.6014434  -306.1325664
-       0.0007179   0.0000496   1.0000000 ]</pre></article></section>
-<section id="rectification"><p class="section-label">03 / Warp the images</p><h2>Rectifying two planar subjects</h2><p>Both implementations use inverse warping. Nearest-neighbor rounds to the closest source pixel, requiring one sample per destination pixel. Bilinear interpolation computes a weighted average of four neighboring samples. Nearest-neighbor has less sampling work and can show jagged edges or pixel blocks; bilinear requires more arithmetic but produces smoother results, sometimes softening fine detail.</p><article><h3>Framed portrait</h3><p>The warp expands the oblique painting into a frontal rectangle. Bilinear interpolation smooths the enlarged face and background, while neither method can recover detail absent from the original.</p><div class="grid three sources"><figure><a href="assets/IMG_4902.jpg"><svg viewBox="0 0 1200 1600" role="img" aria-label="Original photograph with rectification corners" xmlns="http://www.w3.org/2000/svg"><title>Framed portrait: rectification corners</title><image href="assets/web/IMG_4902.webp" width="1200" height="1600"/><polygon points="268,535 535,483 557,1028 296,903" fill="none" stroke="#ffe000" stroke-width="5"/><circle cx="268" cy="535" r="7" fill="#ffe000"/><text x="280" y="523" font-size="28" font-family="Arial" fill="#ffe000" stroke="#111" stroke-width="3" paint-order="stroke">TL</text><circle cx="535" cy="483" r="7" fill="#ffe000"/><text x="547" y="471" font-size="28" font-family="Arial" fill="#ffe000" stroke="#111" stroke-width="3" paint-order="stroke">TR</text><circle cx="557" cy="1028" r="7" fill="#ffe000"/><text x="569" y="1016" font-size="28" font-family="Arial" fill="#ffe000" stroke="#111" stroke-width="3" paint-order="stroke">BR</text><circle cx="296" cy="903" r="7" fill="#ffe000"/><text x="308" y="891" font-size="28" font-family="Arial" fill="#ffe000" stroke="#111" stroke-width="3" paint-order="stroke">BL</text></svg></a><figcaption>Original</figcaption></figure><figure><a href="assets/portrait_nearest.png" aria-label="Open full-size: Framed portrait · nearest-neighbor · 600 × 750"><img src="assets/web/portrait_nearest.webp" width="600" height="750" loading="lazy" decoding="async" alt="Framed portrait · nearest-neighbor · 600 × 750"></a><figcaption>Nearest-neighbor</figcaption></figure><figure><a href="assets/portrait_bilinear.png" aria-label="Open full-size: Framed portrait · bilinear · 600 × 750"><img src="assets/web/portrait_bilinear.webp" width="600" height="750" loading="lazy" decoding="async" alt="Framed portrait · bilinear · 600 × 750"></a><figcaption>Bilinear</figcaption></figure></div></article><article><h3>Emergency-procedures sign</h3><p>Rectifying the sign straightens the panel and makes the text columns easier to compare. Bilinear interpolation makes the text look much clearer by smoothing transitions along the letter edges. Nearest-neighbor produces abrupt changes in color between adjacent pixels, creating jagged, blocky artifacts around the lettering.</p><div class="grid three sources"><figure><a href="assets/IMG_4932.jpg"><svg viewBox="0 0 1200 1600" role="img" aria-label="Original photograph with rectification corners" xmlns="http://www.w3.org/2000/svg"><title>Emergency-procedures sign: rectification corners</title><image href="assets/web/IMG_4932.webp" width="1200" height="1600"/><polygon points="213,12 1049,167 943,1159 311,1407" fill="none" stroke="#ffe000" stroke-width="5"/><circle cx="213" cy="12" r="7" fill="#ffe000"/><text x="225" y="47" font-size="28" font-family="Arial" fill="#ffe000" stroke="#111" stroke-width="3" paint-order="stroke">TL</text><circle cx="1049" cy="167" r="7" fill="#ffe000"/><text x="1061" y="155" font-size="28" font-family="Arial" fill="#ffe000" stroke="#111" stroke-width="3" paint-order="stroke">TR</text><circle cx="943" cy="1159" r="7" fill="#ffe000"/><text x="955" y="1147" font-size="28" font-family="Arial" fill="#ffe000" stroke="#111" stroke-width="3" paint-order="stroke">BR</text><circle cx="311" cy="1407" r="7" fill="#ffe000"/><text x="323" y="1395" font-size="28" font-family="Arial" fill="#ffe000" stroke="#111" stroke-width="3" paint-order="stroke">BL</text></svg></a><figcaption>Original</figcaption></figure><figure><a href="assets/sign_nearest.png" aria-label="Open full-size: Emergency-procedures sign · nearest-neighbor · 600 × 900"><img src="assets/web/sign_nearest.webp" width="600" height="900" loading="lazy" decoding="async" alt="Emergency-procedures sign · nearest-neighbor · 600 × 900"></a><figcaption>Nearest-neighbor</figcaption></figure><figure><a href="assets/sign_bilinear.png" aria-label="Open full-size: Emergency-procedures sign · bilinear · 600 × 900"><img src="assets/web/sign_bilinear.webp" width="600" height="900" loading="lazy" decoding="async" alt="Emergency-procedures sign · bilinear · 600 × 900"></a><figcaption>Bilinear</figcaption></figure></div></article></section>
-<section id="mosaics"><p class="section-label">04 / Blend images into a mosaic</p><h2>A larger field of view</h2><p>I use corresponding points in the two photographs to estimate a homography that aligns the left image with the right image. I then inverse-warp the left image using bilinear interpolation, keeping the right image as the reference. Both images are placed on a shared canvas large enough to contain their combined views.</p><p>To join them smoothly, I use feather blending: pixels near the center of each source image receive more weight than those near its edges. In overlapping regions, I combine the aligned colors using a weighted average; elsewhere, I keep the color from the image that covers that location. This produces a single mosaic with a gradual transition between the two photographs.</p><article><h3>The Gateway</h3><p>The repeating vertical fins and curved façade make alignment easy to inspect. The broad building outline is continuous, while moving street objects and differences in viewpoint can leave local inconsistencies.</p><div class="grid sources"><figure><a href="assets/IMG_4888.jpg" aria-label="Open full-size: Left"><img src="assets/web/IMG_4888.webp" width="1600" height="1200" loading="lazy" decoding="async" alt="Left"></a><figcaption>Left</figcaption></figure><figure><a href="assets/IMG_4890.jpg" aria-label="Open full-size: Right"><img src="assets/web/IMG_4890.webp" width="1600" height="1200" loading="lazy" decoding="async" alt="Right"></a><figcaption>Right</figcaption></figure></div><figure class="result"><a href="assets/results/modern_building_mosaic.png" aria-label="Open full-size: The Gateway"><img src="assets/web/modern_building_mosaic.webp" width="1664" height="1164" loading="lazy" decoding="async" alt="The Gateway"></a><figcaption>The Gateway</figcaption></figure></article><article><h3>Doe Library</h3><p>The columns, windows, and roofline provide strong shared structure.</p><div class="grid sources"><figure><a href="assets/IMG_4896.jpg" aria-label="Open full-size: Left"><img src="assets/web/IMG_4896.webp" width="1050" height="1400" loading="lazy" decoding="async" alt="Left"></a><figcaption>Left</figcaption></figure><figure><a href="assets/IMG_4897.jpg" aria-label="Open full-size: Right"><img src="assets/web/IMG_4897.webp" width="1050" height="1400" loading="lazy" decoding="async" alt="Right"></a><figcaption>Right</figcaption></figure></div><figure class="result"><a href="assets/results/library_mosaic.png" aria-label="Open full-size: Doe Library"><img src="assets/web/library_mosaic.webp" width="1264" height="1400" loading="lazy" decoding="async" alt="Doe Library"></a><figcaption>Doe Library</figcaption></figure></article><article><h3>Lower Sproul</h3><p>The stitched view extends across the plaza and the surrounding buildings.</p><div class="grid sources"><figure><a href="assets/IMG_4927.jpg" aria-label="Open full-size: Left"><img src="assets/web/IMG_4927.webp" width="1600" height="1200" loading="lazy" decoding="async" alt="Left"></a><figcaption>Left</figcaption></figure><figure><a href="assets/IMG_4929.jpg" aria-label="Open full-size: Right"><img src="assets/web/IMG_4929.webp" width="1600" height="1200" loading="lazy" decoding="async" alt="Right"></a><figcaption>Right</figcaption></figure></div><figure class="result"><a href="assets/results/plaza_mosaic.png" aria-label="Open full-size: Lower Sproul"><img src="assets/web/plaza_mosaic.webp" width="1800" height="1269" loading="lazy" decoding="async" alt="Lower Sproul"></a><figcaption>Lower Sproul</figcaption></figure></article></section><section id="takeaways"><p class="section-label">05 / Reflection</p><h2>Geometry first, blending second</h2><p>Rectification shows how a projective transform can turn a tilted planar region into a frontal view. The mosaic results extend that same idea to overlapping photographs, using a shared coordinate system and a weighted blend.</p><p>A smooth blend depends on geometric alignment: feathering can soften a seam, but it cannot correct parallax, moving objects, or a mismatched correspondence. Likewise, interpolation changes how a warp samples existing detail; it cannot recover detail missing from the source photograph.</p></section><footer><span>Theo Dela Cruz · CS 180 · Project 4A</span><a href="../index.html">All projects ↑</a></footer></main></body></html>
+       0.0007179   0.0000496   1.0000000 ]</pre>
+        </article>
+      </section>
+
+      <!-- A.3 - Image rectification -->
+      <section id="rectification">
+        <p class="section-label">
+          03 / Warp the images
+        </p>
+        <h2>Rectifying two planar subjects</h2>
+        <p>
+          Both implementations use inverse warping. Nearest-neighbor rounds to the closest source pixel, requiring one sample per destination pixel. Bilinear interpolation computes a weighted average of four neighboring samples. Nearest-neighbor has less sampling work and can show jagged edges or pixel blocks; bilinear requires more arithmetic but produces smoother results, sometimes softening fine detail.
+        </p>
+
+        <article>
+          <h3>Framed portrait</h3>
+          <p>
+            Here, it is difficult to tell a difference between nearest neighbor and bilinear
+            interpolation. I think this is due to the extreme angle of the portrait, which results
+            in a blurry image either way. There is a lack of detail in the face and background so
+            results are similar.
+          </p>
+          <div class="grid three sources">
+            <figure>
+              <a href="assets/IMG_4902.jpg">
+                <svg aria-label="Original photograph with rectification corners" role="img" viewbox="0 0 1200 1600" xmlns="http://www.w3.org/2000/svg">
+                  <title>Framed portrait: rectification corners</title>
+                  <image height="1600" href="assets/web/IMG_4902.webp" width="1200"/>
+                  <polygon fill="none" points="268,535 535,483 557,1028 296,903" stroke="#ffe000" stroke-width="5">
+                  </polygon>
+                  <circle cx="268" cy="535" fill="#ffe000" r="7">
+                  </circle>
+                  <text fill="#ffe000" font-family="Arial" font-size="28" paint-order="stroke" stroke="#111" stroke-width="3" x="280" y="523">TL</text>
+                  <circle cx="535" cy="483" fill="#ffe000" r="7">
+                  </circle>
+                  <text fill="#ffe000" font-family="Arial" font-size="28" paint-order="stroke" stroke="#111" stroke-width="3" x="547" y="471">TR</text>
+                  <circle cx="557" cy="1028" fill="#ffe000" r="7">
+                  </circle>
+                  <text fill="#ffe000" font-family="Arial" font-size="28" paint-order="stroke" stroke="#111" stroke-width="3" x="569" y="1016">BR</text>
+                  <circle cx="296" cy="903" fill="#ffe000" r="7">
+                  </circle>
+                  <text fill="#ffe000" font-family="Arial" font-size="28" paint-order="stroke" stroke="#111" stroke-width="3" x="308" y="891">BL</text>
+                </svg>
+              </a>
+              <figcaption>Original</figcaption>
+            </figure>
+            <figure>
+              <a aria-label="Open full-size: Framed portrait · nearest-neighbor · 600 × 750" href="assets/portrait_nearest.png">
+                <img alt="Framed portrait · nearest-neighbor · 600 × 750" decoding="async" height="750" loading="lazy" src="assets/web/portrait_nearest.webp" width="600"/>
+              </a>
+              <figcaption>Nearest-neighbor</figcaption>
+            </figure>
+            <figure>
+              <a aria-label="Open full-size: Framed portrait · bilinear · 600 × 750" href="assets/portrait_bilinear.png">
+                <img alt="Framed portrait · bilinear · 600 × 750" decoding="async" height="750" loading="lazy" src="assets/web/portrait_bilinear.webp" width="600"/>
+              </a>
+              <figcaption>Bilinear</figcaption>
+            </figure>
+          </div>
+        </article>
+
+        <article>
+          <h3>Emergency-procedures sign</h3>
+          <p>
+            Here, nearest neighbor creates sudden and weird-looking transitions between letters
+            and the background. This can be noticed especially near the bottom right of the image.
+            Bilinear interpolation makes the text much clearer by making the transitions along the
+            letter edges smoother. Here, there is a clear benefit to using bilinear interpolation
+            over nearest neighbor.
+          </p>
+          <div class="grid three sources">
+            <figure>
+              <a href="assets/IMG_4932.jpg">
+                <svg aria-label="Original photograph with rectification corners" role="img" viewbox="0 0 1200 1600" xmlns="http://www.w3.org/2000/svg">
+                  <title>Emergency-procedures sign: rectification corners</title>
+                  <image height="1600" href="assets/web/IMG_4932.webp" width="1200"/>
+                  <polygon fill="none" points="213,12 1049,167 943,1159 311,1407" stroke="#ffe000" stroke-width="5">
+                  </polygon>
+                  <circle cx="213" cy="12" fill="#ffe000" r="7">
+                  </circle>
+                  <text fill="#ffe000" font-family="Arial" font-size="28" paint-order="stroke" stroke="#111" stroke-width="3" x="225" y="47">TL</text>
+                  <circle cx="1049" cy="167" fill="#ffe000" r="7">
+                  </circle>
+                  <text fill="#ffe000" font-family="Arial" font-size="28" paint-order="stroke" stroke="#111" stroke-width="3" x="1061" y="155">TR</text>
+                  <circle cx="943" cy="1159" fill="#ffe000" r="7">
+                  </circle>
+                  <text fill="#ffe000" font-family="Arial" font-size="28" paint-order="stroke" stroke="#111" stroke-width="3" x="955" y="1147">BR</text>
+                  <circle cx="311" cy="1407" fill="#ffe000" r="7">
+                  </circle>
+                  <text fill="#ffe000" font-family="Arial" font-size="28" paint-order="stroke" stroke="#111" stroke-width="3" x="323" y="1395">BL</text>
+                </svg>
+              </a>
+              <figcaption>Original</figcaption>
+            </figure>
+            <figure>
+              <a aria-label="Open full-size: Emergency-procedures sign · nearest-neighbor · 600 × 900" href="assets/sign_nearest.png">
+                <img alt="Emergency-procedures sign · nearest-neighbor · 600 × 900" decoding="async" height="900" loading="lazy" src="assets/web/sign_nearest.webp" width="600"/>
+              </a>
+              <figcaption>Nearest-neighbor</figcaption>
+            </figure>
+            <figure>
+              <a aria-label="Open full-size: Emergency-procedures sign · bilinear · 600 × 900" href="assets/sign_bilinear.png">
+                <img alt="Emergency-procedures sign · bilinear · 600 × 900" decoding="async" height="900" loading="lazy" src="assets/web/sign_bilinear.webp" width="600"/>
+              </a>
+              <figcaption>Bilinear</figcaption>
+            </figure>
+          </div>
+        </article>
+      </section>
+
+      <!-- A.4 - Mosaic blending -->
+      <section id="mosaics">
+        <p class="section-label">
+          04 / Blend images into a mosaic
+        </p>
+        <h2>A larger field of view</h2>
+        <p>
+          I use corresponding points in the two photographs to estimate a homography that aligns
+          the left image with the right image. I then inverse-warp the left image using bilinear
+          interpolation, using the right image as the reference. Both images are placed on a
+          shared canvas large enough to contain their combined views.
+        </p>
+        <p>
+          To join them smoothly, I use feather blending: pixels near the center of each source
+          image receive more weight than those near its edges. In overlapping regions, I combine
+          the aligned colors using a weighted average. Otherwise, I just take the pixel from the
+          image that covers that location. In this way, I have a smooth transition between the two
+          images.
+        </p>
+
+        <article>
+          <h3>The Gateway</h3>
+          <div class="grid sources">
+            <figure>
+              <a aria-label="Open full-size: Left" href="assets/IMG_4888.jpg">
+                <img alt="Left" decoding="async" height="1200" loading="lazy" src="assets/web/IMG_4888.webp" width="1600"/>
+              </a>
+              <figcaption>Left</figcaption>
+            </figure>
+            <figure>
+              <a aria-label="Open full-size: Right" href="assets/IMG_4890.jpg">
+                <img alt="Right" decoding="async" height="1200" loading="lazy" src="assets/web/IMG_4890.webp" width="1600"/>
+              </a>
+              <figcaption>Right</figcaption>
+            </figure>
+          </div>
+          <figure class="result">
+            <a aria-label="Open full-size: The Gateway" href="assets/results/modern_building_mosaic.png">
+              <img alt="The Gateway" decoding="async" height="1164" loading="lazy" src="assets/web/modern_building_mosaic.webp" width="1664"/>
+            </a>
+            <figcaption>The Gateway</figcaption>
+          </figure>
+        </article>
+
+        <article>
+          <h3>Doe Library</h3>
+          <div class="grid sources">
+            <figure>
+              <a aria-label="Open full-size: Left" href="assets/IMG_4896.jpg">
+                <img alt="Left" decoding="async" height="1400" loading="lazy" src="assets/web/IMG_4896.webp" width="1050"/>
+              </a>
+              <figcaption>Left</figcaption>
+            </figure>
+            <figure>
+              <a aria-label="Open full-size: Right" href="assets/IMG_4897.jpg">
+                <img alt="Right" decoding="async" height="1400" loading="lazy" src="assets/web/IMG_4897.webp" width="1050"/>
+              </a>
+              <figcaption>Right</figcaption>
+            </figure>
+          </div>
+          <figure class="result">
+            <a aria-label="Open full-size: Doe Library" href="assets/results/library_mosaic.png">
+              <img alt="Doe Library" decoding="async" height="1400" loading="lazy" src="assets/web/library_mosaic.webp" width="1264"/>
+            </a>
+            <figcaption>Doe Library</figcaption>
+          </figure>
+        </article>
+
+        <article>
+          <h3>Lower Sproul</h3>
+          <div class="grid sources">
+            <figure>
+              <a aria-label="Open full-size: Left" href="assets/IMG_4927.jpg">
+                <img alt="Left" decoding="async" height="1200" loading="lazy" src="assets/web/IMG_4927.webp" width="1600"/>
+              </a>
+              <figcaption>Left</figcaption>
+            </figure>
+            <figure>
+              <a aria-label="Open full-size: Right" href="assets/IMG_4929.jpg">
+                <img alt="Right" decoding="async" height="1200" loading="lazy" src="assets/web/IMG_4929.webp" width="1600"/>
+              </a>
+              <figcaption>Right</figcaption>
+            </figure>
+          </div>
+          <figure class="result">
+            <a aria-label="Open full-size: Lower Sproul" href="assets/results/plaza_mosaic.png">
+              <img alt="Lower Sproul" decoding="async" height="1269" loading="lazy" src="assets/web/plaza_mosaic.webp" width="1800"/>
+            </a>
+            <figcaption>Lower Sproul</figcaption>
+          </figure>
+        </article>
+      </section>
+
+      <!-- Reflection -->
+      <section id="takeaways">
+        <p class="section-label">
+          05 / Reflection
+        </p>
+        <h2>Geometry first, blending second</h2>
+        <p>
+          Rectification shows how a projective transform can turn a tilted planar region into a frontal view. The mosaic results extend that same idea to overlapping photographs, using a shared coordinate system and a weighted blend.
+        </p>
+        <p>
+          A smooth blend depends on geometric alignment: feathering can soften a seam, but it cannot correct parallax, moving objects, or a mismatched correspondence. Likewise, interpolation changes how a warp samples existing detail; it cannot recover detail missing from the source photograph.
+        </p>
+      </section>
+
+      <footer>
+        <span>Theo Dela Cruz · CS 180 · Project 4A</span>
+        <a href="../index.html">All projects ↑</a>
+      </footer>
+    </main>
+  </body>
+</html>
